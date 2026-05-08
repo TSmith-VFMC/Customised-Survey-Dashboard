@@ -49,7 +49,40 @@
     .progress-bar-fill { height: 100%; background: var(--primary); border-radius: 9999px; transition: width 0.35s ease; }
 
     /* ── Main layout ── */
-    .main { max-width: 780px; margin: 48px auto; padding: 0 24px 80px; }
+    .layout { display: flex; gap: 28px; max-width: 1120px; margin: 40px auto; padding: 0 24px 80px; align-items: flex-start; }
+    .content { flex: 1; min-width: 0; }
+
+    /* ── Sidebar ── */
+    .sidebar { width: 265px; flex-shrink: 0; position: sticky; top: 80px; display: flex; flex-direction: column; gap: 16px; max-height: calc(100vh - 100px); overflow-y: auto; padding-bottom: 4px; }
+    .sidebar::-webkit-scrollbar { width: 4px; } .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 9999px; }
+    .sidebar-card { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); padding: 16px; }
+    .sidebar-section-title { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; color: var(--text-muted); margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+    .sidebar-nav-btn { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border-radius: 8px; border: none; background: none; font-family: inherit; font-size: 0.9rem; font-weight: 600; color: var(--text); cursor: pointer; transition: all 0.15s; text-align: left; }
+    .sidebar-nav-btn:hover { background: var(--primary-light); color: var(--primary); }
+    .sidebar-nav-btn.active { background: var(--primary-light); color: var(--primary); }
+    /* collapsible accordion */
+    .accordion-header { display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; }
+    .accordion-title { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; color: var(--text-muted); padding-bottom: 8px; border-bottom: 1px solid var(--border); flex: 1; }
+    .accordion-chevron { font-size: 0.7rem; color: var(--text-muted); transition: transform 0.2s; padding-bottom: 8px; }
+    .accordion-chevron.open { transform: rotate(180deg); }
+    .accordion-body { overflow: hidden; transition: max-height 0.3s ease; }
+    .accordion-body.closed { max-height: 0; }
+    .accordion-body.open { max-height: 1200px; }
+    /* guide steps */
+    .guide-step { display: flex; gap: 10px; margin-bottom: 12px; margin-top: 12px; }
+    .guide-step:last-child { margin-bottom: 0; }
+    .guide-num { width: 20px; height: 20px; border-radius: 50%; background: var(--primary); color: white; font-size: 0.68rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; }
+    .guide-text { font-size: 0.8rem; color: var(--text-muted); line-height: 1.5; }
+    .guide-text strong { color: var(--text); }
+    /* tech info */
+    .tech-block { margin-top: 12px; margin-bottom: 14px; }
+    .tech-block:last-child { margin-bottom: 0; }
+    .tech-block-title { font-size: 0.75rem; font-weight: 700; color: var(--text); margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+    .tech-item { font-size: 0.78rem; color: var(--text-muted); line-height: 1.55; margin-bottom: 5px; padding-left: 10px; border-left: 2px solid var(--border); }
+    .tech-item strong { color: var(--text); }
+    .tip-item { display: flex; gap: 8px; font-size: 0.78rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 8px; margin-top: 10px; }
+    .tip-item:last-child { margin-bottom: 0; }
+    .tip-icon { flex-shrink: 0; }
 
     /* ── Card ── */
     .card { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow-lg); padding: 44px 52px; }
@@ -125,6 +158,11 @@
     .export-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border); }
 
     /* ── Responsive ── */
+    @media (max-width: 900px) {
+      .layout { flex-direction: column; }
+      .sidebar { width: 100%; position: static; flex-direction: row; flex-wrap: wrap; max-height: none; overflow-y: visible; }
+      .sidebar-card { flex: 1; min-width: 220px; }
+    }
     @media (max-width: 600px) {
       .card { padding: 28px 20px; }
       .likert-circle { width: 36px; height: 36px; }
@@ -145,8 +183,86 @@
     </div>
   </header>
 
-  <main class="main">
-    <div class="card" id="app-card"></div>
+  <main class="layout">
+
+    <!-- ── Left Sidebar ── -->
+    <aside class="sidebar">
+
+      <!-- Navigation -->
+      <div class="sidebar-card">
+        <div class="sidebar-section-title">Navigation</div>
+        <button class="sidebar-nav-btn" id="nav-survey" onclick="navToSurvey()">
+          📋 Start Survey
+        </button>
+      </div>
+
+      <!-- User Guide -->
+      <div class="sidebar-card">
+        <div class="accordion-header" onclick="toggleAccordion('guide')">
+          <div class="accordion-title">User Guide</div>
+          <div class="accordion-chevron open" id="chevron-guide">▼</div>
+        </div>
+        <div class="accordion-body open" id="body-guide">
+          <div class="guide-step"><div class="guide-num">1</div><div class="guide-text"><strong>Review the overview</strong> on the welcome screen — check question counts and types.</div></div>
+          <div class="guide-step"><div class="guide-num">2</div><div class="guide-text"><strong>Click Start Survey</strong> to begin answering questions one at a time.</div></div>
+          <div class="guide-step"><div class="guide-num">3</div><div class="guide-text"><strong>Select your answer</strong> for each question, then click <em>Next</em> to proceed.</div></div>
+          <div class="guide-step"><div class="guide-num">4</div><div class="guide-text"><strong>Use Back</strong> at any time to revisit a previous answer.</div></div>
+          <div class="guide-step"><div class="guide-num">5</div><div class="guide-text"><strong>Skip</strong> any question you prefer not to answer.</div></div>
+          <div class="guide-step"><div class="guide-num">6</div><div class="guide-text"><strong>Submit</strong> on the final question to see your results.</div></div>
+          <div class="guide-step"><div class="guide-num">7</div><div class="guide-text"><strong>Export</strong> your responses as JSON or CSV from the results screen.</div></div>
+        </div>
+      </div>
+
+      <!-- Data & Technical Information -->
+      <div class="sidebar-card">
+        <div class="accordion-header" onclick="toggleAccordion('tech')">
+          <div class="accordion-title">Data &amp; Technical Information</div>
+          <div class="accordion-chevron open" id="chevron-tech">▼</div>
+        </div>
+        <div class="accordion-body open" id="body-tech">
+
+          <div class="tech-block">
+            <div class="tech-block-title">⚙️ How It Works</div>
+            <div class="tech-item">This dashboard is a <strong>single-page HTML app</strong> that runs entirely in your browser — no server required.</div>
+            <div class="tech-item">Survey questions are embedded from <strong>survey_questions.json</strong>, generated by the Python script.</div>
+            <div class="tech-item">The Python script (<strong>survey_generator.py</strong>) analyses source text using NLP to extract key themes, findings, and statistics.</div>
+            <div class="tech-item">Three question types are produced: <strong>Likert scale</strong> (attitudes), <strong>Multiple choice</strong> (categories), and <strong>Open-ended</strong> (qualitative).</div>
+          </div>
+
+          <div class="tech-block">
+            <div class="tech-block-title">📥 Data Sourcing</div>
+            <div class="tech-item">Paste or load any <strong>report or PDF text</strong> into survey_generator.py to regenerate questions tailored to new content.</div>
+            <div class="tech-item">The script uses <strong>frequency analysis</strong> and signal-word detection to surface the most important themes.</div>
+            <div class="tech-item">Questions are written to <strong>survey_questions.json</strong> — edit this file manually to refine wording.</div>
+          </div>
+
+          <div class="tech-block">
+            <div class="tech-block-title">💾 Response Storage</div>
+            <div class="tech-item">Responses are saved to <strong>browser localStorage</strong> during your session — they persist if you close and reopen the tab.</div>
+            <div class="tech-item">Use <strong>Export JSON</strong> for system integration or archiving.</div>
+            <div class="tech-item">Use <strong>Export CSV</strong> to open responses directly in Excel.</div>
+          </div>
+
+          <div class="tech-block">
+            <div class="tech-block-title">💡 Tips &amp; Hints</div>
+            <div class="tip-item"><span class="tip-icon">✅</span>Run survey_generator.py with a new text file any time you want fresh questions from a different report.</div>
+            <div class="tip-item"><span class="tip-icon">✅</span>Manually edit survey_questions.json to fix or improve question wording before sharing.</div>
+            <div class="tip-item"><span class="tip-icon">✅</span>The progress bar in the header shows how many questions you've answered.</div>
+            <div class="tip-item"><span class="tip-icon">✅</span>Your answers auto-save — if you accidentally close the browser, reopen and they'll still be there.</div>
+            <div class="tip-item"><span class="tip-icon">✅</span>CSV exports open directly in Excel — use columns D for answers.</div>
+            <div class="tip-item"><span class="tip-icon">⚠️</span>Clearing browser data will erase saved responses — export first.</div>
+          </div>
+
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- ── Main Content ── -->
+    <div class="content">
+      <div class="card" id="app-card"></div>
+    </div>
+
   </main>
 
   <script>
@@ -422,8 +538,28 @@
     }
 
     // ── Interaction handlers ──────────────────────────────────────────────
+    function toggleAccordion(id) {
+      const body = document.getElementById('body-' + id);
+      const chevron = document.getElementById('chevron-' + id);
+      const isOpen = body.classList.contains('open');
+      body.classList.toggle('open', !isOpen);
+      body.classList.toggle('closed', isOpen);
+      chevron.classList.toggle('open', !isOpen);
+    }
+
+    function navToSurvey() {
+      if (state.screen === 'results') {
+        retakeSurvey();
+      } else if (state.screen === 'question') {
+        // already in survey, do nothing
+      } else {
+        startSurvey();
+      }
+    }
+
     function startSurvey() {
       state.screen = 'question';
+      document.getElementById('nav-survey').classList.add('active');
       renderQuestion(state.currentIndex);
       window.scrollTo(0, 0);
     }
@@ -491,6 +627,8 @@
       state.currentIndex = 0;
       state.screen = 'welcome';
       try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
+      const navBtn = document.getElementById('nav-survey');
+      if (navBtn) navBtn.classList.remove('active');
       renderWelcome();
     }
 
