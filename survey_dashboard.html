@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Survey Dashboard</title>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --primary-light: #eff6ff;
+      --success: #16a34a;
+      --surface: #ffffff;
+      --bg: #f1f5f9;
+      --border: #e2e8f0;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --radius: 12px;
+      --shadow: 0 1px 3px rgba(0,0,0,.1), 0 1px 2px rgba(0,0,0,.06);
+      --shadow-lg: 0 10px 15px -3px rgba(0,0,0,.1), 0 4px 6px -2px rgba(0,0,0,.05);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+      background: var(--bg);
+      min-height: 100vh;
+      color: var(--text);
+    }
+
+    /* ── Header ── */
+    .header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: var(--shadow);
+    }
+    .header-title { font-size: 1.05rem; font-weight: 700; color: var(--primary); }
+    .header-progress { display: flex; align-items: center; gap: 12px; font-size: 0.875rem; color: var(--text-muted); }
+    .progress-bar-wrap { width: 160px; height: 6px; background: var(--border); border-radius: 9999px; overflow: hidden; }
+    .progress-bar-fill { height: 100%; background: var(--primary); border-radius: 9999px; transition: width 0.35s ease; }
+
+    /* ── Main layout ── */
+    .main { max-width: 780px; margin: 48px auto; padding: 0 24px 80px; }
+
+    /* ── Card ── */
+    .card { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow-lg); padding: 44px 52px; }
+
+    /* ── Welcome ── */
+    .welcome-icon { font-size: 3rem; margin-bottom: 16px; }
+    .welcome-title { font-size: 1.75rem; font-weight: 700; margin-bottom: 12px; }
+    .welcome-desc { color: var(--text-muted); line-height: 1.65; margin-bottom: 28px; font-size: 0.975rem; }
+    .stats-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 36px; }
+    .stat-chip { display: flex; align-items: center; gap: 6px; background: var(--primary-light); color: var(--primary); padding: 6px 16px; border-radius: 9999px; font-size: 0.85rem; font-weight: 500; }
+
+    /* ── Question ── */
+    .q-meta { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+    .q-number { font-size: 0.875rem; color: var(--text-muted); }
+    .q-type-badge { display: inline-block; padding: 3px 12px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; }
+    .badge-likert { background: #fef3c7; color: #92400e; }
+    .badge-multiple_choice { background: #dcfce7; color: #166534; }
+    .badge-open_ended { background: #f3e8ff; color: #6b21a8; }
+    .q-text { font-size: 1.15rem; font-weight: 600; line-height: 1.55; margin-bottom: 28px; }
+
+    /* ── Options ── */
+    .options-list { display: flex; flex-direction: column; gap: 10px; }
+    .option-item { display: flex; align-items: center; gap: 14px; padding: 14px 18px; border: 2px solid var(--border); border-radius: 9px; cursor: pointer; transition: all 0.15s; user-select: none; }
+    .option-item:hover { border-color: var(--primary); background: var(--primary-light); }
+    .option-item.selected { border-color: var(--primary); background: var(--primary-light); }
+    .option-radio { width: 18px; height: 18px; border: 2px solid #cbd5e1; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+    .option-item.selected .option-radio { border-color: var(--primary); background: var(--primary); }
+    .option-item.selected .option-radio::after { content: ''; width: 6px; height: 6px; background: white; border-radius: 50%; display: block; }
+    .option-label { font-size: 0.95rem; }
+
+    /* ── Likert scale ── */
+    .likert-scale { display: flex; gap: 8px; justify-content: space-between; padding: 4px 0; }
+    .likert-option { display: flex; flex-direction: column; align-items: center; gap: 8px; flex: 1; cursor: pointer; }
+    .likert-circle { width: 44px; height: 44px; border: 2px solid #cbd5e1; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.15s; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); }
+    .likert-option:hover .likert-circle { border-color: var(--primary); background: var(--primary-light); color: var(--primary); }
+    .likert-option.selected .likert-circle { border-color: var(--primary); background: var(--primary); color: white; }
+    .likert-label { font-size: 0.7rem; text-align: center; color: var(--text-muted); line-height: 1.3; max-width: 72px; }
+
+    /* ── Open ended ── */
+    .open-textarea { width: 100%; min-height: 140px; padding: 14px 16px; border: 2px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 0.95rem; color: var(--text); resize: vertical; transition: border-color 0.15s; background: var(--surface); line-height: 1.6; }
+    .open-textarea:focus { outline: none; border-color: var(--primary); }
+    .open-textarea::placeholder { color: #94a3b8; }
+
+    /* ── Navigation ── */
+    .nav-row { display: flex; justify-content: space-between; align-items: center; margin-top: 36px; padding-top: 24px; border-top: 1px solid var(--border); }
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 10px 22px; border-radius: 8px; font-size: 0.95rem; font-weight: 500; cursor: pointer; border: none; transition: all 0.15s; font-family: inherit; }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-secondary { background: #e2e8f0; color: var(--text); }
+    .btn-secondary:hover { background: #cbd5e1; }
+    .btn-success { background: var(--success); color: white; }
+    .btn-success:hover { background: #15803d; }
+    .btn-outline { background: transparent; color: var(--primary); border: 2px solid var(--primary); }
+    .btn-outline:hover { background: var(--primary-light); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .skip-btn { font-size: 0.875rem; color: var(--text-muted); cursor: pointer; background: none; border: none; font-family: inherit; text-decoration: underline; }
+    .skip-btn:hover { color: var(--text); }
+
+    /* ── Results ── */
+    .completion-banner { text-align: center; padding: 36px 24px; background: linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%); border-radius: 10px; margin-bottom: 36px; border: 1px solid #bfdbfe; }
+    .completion-icon { font-size: 3rem; margin-bottom: 12px; }
+    .completion-title { font-size: 1.5rem; font-weight: 700; color: var(--success); margin-bottom: 8px; }
+    .completion-sub { color: var(--text-muted); font-size: 0.95rem; }
+    .results-title { font-size: 1.4rem; font-weight: 700; margin-bottom: 6px; }
+    .results-sub { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 32px; }
+    .result-section { margin-bottom: 32px; }
+    .result-section-title { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+    .result-item { margin-bottom: 20px; }
+    .result-q { font-size: 0.9rem; font-weight: 600; margin-bottom: 8px; line-height: 1.45; color: var(--text); }
+    .result-answer { font-size: 0.9rem; font-weight: 500; color: var(--primary); padding: 9px 14px; background: var(--primary-light); border-radius: 6px; display: inline-block; }
+    .result-open { font-size: 0.9rem; color: var(--text); padding: 12px 14px; background: #f8fafc; border: 1px solid var(--border); border-radius: 6px; line-height: 1.6; white-space: pre-wrap; }
+    .result-skipped { font-size: 0.85rem; color: #94a3b8; font-style: italic; }
+    .export-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border); }
+
+    /* ── Responsive ── */
+    @media (max-width: 600px) {
+      .card { padding: 28px 20px; }
+      .likert-circle { width: 36px; height: 36px; }
+      .likert-label { font-size: 0.62rem; }
+      .stats-row { gap: 8px; }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="header">
+    <div class="header-title">📋 Survey Dashboard</div>
+    <div class="header-progress" id="header-progress" style="display:none">
+      <span id="progress-text">0 / 21</span>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-fill" id="progress-fill" style="width:0%"></div>
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="card" id="app-card"></div>
+  </main>
+
+  <script>
+    // ── Embedded Survey Data ──────────────────────────────────────────────
+    const SURVEY = {
+      "metadata": {
+        "title": "Survey Questionnaire",
+        "source": "pasted text",
+        "generated_by": "survey_generator.py (rule-based)",
+        "total_questions": 21,
+        "question_types": { "likert": 12, "multiple_choice": 5, "open_ended": 4 }
+      },
+      "questions": [
+        {
+          "id": 1, "type": "multiple_choice",
+          "question": "Which of the following best describes your role?",
+          "options": ["Executive / Senior Leadership","Manager / Team Lead","Individual Contributor","Consultant / Advisor","Other"]
+        },
+        {
+          "id": 2, "type": "multiple_choice",
+          "question": "Which sector does your organization operate in?",
+          "options": ["Public Sector / Government","Private Sector","Non-profit / NGO","Academia / Research","Other"]
+        },
+        {
+          "id": 3, "type": "multiple_choice",
+          "question": "How long have you been working in your current field?",
+          "options": ["Less than 2 years","2\u20135 years","6\u201310 years","More than 10 years"]
+        },
+        {
+          "id": 4, "type": "likert",
+          "question": "To what extent do you agree with the following statement: \u201cThis report found that 72% of organizations struggle with data governance.\u201d",
+          "options": ["Strongly Agree","Agree","Neutral","Disagree","Strongly Disagree"]
+        },
+        {
+          "id": 5, "type": "likert",
+          "question": "To what extent do you agree with the following statement: \u201cThe study indicates that remote work policies have significantly increased employee satisfaction.\u201d",
+          "options": ["Strongly Agree","Agree","Neutral","Disagree","Strongly Disagree"]
+        },
+        {
+          "id": 6, "type": "likert",
+          "question": "To what extent do you agree with the following statement: \u201cResearch suggests that cybersecurity investment is critical for business continuity.\u201d",
+          "options": ["Strongly Agree","Agree","Neutral","Disagree","Strongly Disagree"]
+        },
+        {
+          "id": 7, "type": "likert",
+          "question": "To what extent do you agree with the following statement: \u201cThe report recommends implementing regular staff training programs.\u201d",
+          "options": ["Strongly Agree","Agree","Neutral","Disagree","Strongly Disagree"]
+        },
+        {
+          "id": 8, "type": "likert",
+          "question": "To what extent do you agree with the following statement: \u201cResults show that customer engagement improved by 45% after policy changes.\u201d",
+          "options": ["Strongly Agree","Agree","Neutral","Disagree","Strongly Disagree"]
+        },
+        {
+          "id": 9, "type": "likert",
+          "question": "How important is Found to your organization?",
+          "options": ["Very Important","Important","Neutral","Unimportant","Very Unimportant"]
+        },
+        {
+          "id": 10, "type": "likert",
+          "question": "How important is Organizations to your organization?",
+          "options": ["Very Important","Important","Neutral","Unimportant","Very Unimportant"]
+        },
+        {
+          "id": 11, "type": "likert",
+          "question": "How important is Struggle to your organization?",
+          "options": ["Very Important","Important","Neutral","Unimportant","Very Unimportant"]
+        },
+        {
+          "id": 12, "type": "likert",
+          "question": "How important is Data to your organization?",
+          "options": ["Very Important","Important","Neutral","Unimportant","Very Unimportant"]
+        },
+        {
+          "id": 13, "type": "likert",
+          "question": "How satisfied are you with how your organization currently addresses Found?",
+          "options": ["Very Satisfied","Satisfied","Neutral","Dissatisfied","Very Dissatisfied"]
+        },
+        {
+          "id": 14, "type": "likert",
+          "question": "How effective are your organization\u2019s current strategies related to Organizations?",
+          "options": ["Very Effective","Effective","Neutral","Ineffective","Very Ineffective"]
+        },
+        {
+          "id": 15, "type": "multiple_choice",
+          "question": "How frequently does your organization review or update its approach to Struggle?",
+          "options": ["Always","Often","Sometimes","Rarely","Never"]
+        },
+        {
+          "id": 16, "type": "likert",
+          "question": "How likely is your organization to take action on Data in the next 12 months?",
+          "options": ["Very Likely","Likely","Unsure","Unlikely","Very Unlikely"]
+        },
+        {
+          "id": 17, "type": "open_ended",
+          "question": "What are the most significant challenges your organization faces that relate to the topics covered in this report?"
+        },
+        {
+          "id": 18, "type": "open_ended",
+          "question": "What actions has your organization already taken in response to findings or recommendations similar to those in this report?"
+        },
+        {
+          "id": 19, "type": "open_ended",
+          "question": "What additional resources, tools, or support would help your organization improve in the areas highlighted by this report?"
+        },
+        {
+          "id": 20, "type": "open_ended",
+          "question": "Is there anything important about your organization\u2019s context that is not captured by the questions above? Please describe."
+        },
+        {
+          "id": 21, "type": "multiple_choice",
+          "question": "Overall, how would you rate the relevance of this report to your organization\u2019s current priorities?",
+          "options": ["Highly Relevant","Relevant","Somewhat Relevant","Not Relevant"]
+        }
+      ]
+    };
+
+    // ── State ─────────────────────────────────────────────────────────────
+    const state = {
+      screen: 'welcome',
+      currentIndex: 0,
+      responses: {},
+    };
+
+    // ── localStorage persistence ───────────────────────────────────────────
+    const STORAGE_KEY = 'survey_dashboard_v1';
+    function saveToStorage() {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state.responses)); } catch(e) {}
+    }
+    function loadFromStorage() {
+      try { const s = localStorage.getItem(STORAGE_KEY); if (s) return JSON.parse(s); } catch(e) {}
+      return {};
+    }
+
+    // ── DOM refs ──────────────────────────────────────────────────────────
+    const card = document.getElementById('app-card');
+    const headerProgress = document.getElementById('header-progress');
+    const progressText = document.getElementById('progress-text');
+    const progressFill = document.getElementById('progress-fill');
+
+    function updateProgress() {
+      const answered = Object.keys(state.responses).length;
+      const total = SURVEY.questions.length;
+      progressText.textContent = `${answered} / ${total}`;
+      progressFill.style.width = `${Math.round((answered / total) * 100)}%`;
+    }
+
+    // ── Welcome screen ────────────────────────────────────────────────────
+    function renderWelcome() {
+      headerProgress.style.display = 'none';
+      const m = SURVEY.metadata;
+      const hasSaved = Object.keys(state.responses).length > 0;
+      card.innerHTML = `
+        <div class="welcome-icon">📋</div>
+        <h1 class="welcome-title">${h(m.title)}</h1>
+        <p class="welcome-desc">
+          This survey contains <strong>${m.total_questions} questions</strong> covering key topics from the source report.
+          Your responses help generate insights. Estimated time: <strong>5–10 minutes</strong>.
+        </p>
+        <div class="stats-row">
+          <div class="stat-chip">🔵 ${m.question_types.likert} Likert scale</div>
+          <div class="stat-chip">🟢 ${m.question_types.multiple_choice} Multiple choice</div>
+          <div class="stat-chip">🟣 ${m.question_types.open_ended} Open-ended</div>
+        </div>
+        ${hasSaved ? `<p style="font-size:.875rem;color:var(--success);margin-bottom:16px">✓ In-progress responses restored from your last session.</p>` : ''}
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="startSurvey()" style="padding:12px 32px;font-size:1rem">
+            ${hasSaved ? 'Continue Survey →' : 'Start Survey →'}
+          </button>
+          ${hasSaved ? `<button class="btn btn-secondary" onclick="clearAndStart()">Start Fresh</button>` : ''}
+        </div>
+      `;
+    }
+
+    // ── Question screen ───────────────────────────────────────────────────
+    function renderQuestion(index) {
+      headerProgress.style.display = 'flex';
+      const q = SURVEY.questions[index];
+      const total = SURVEY.questions.length;
+      const saved = state.responses[q.id];
+      updateProgress();
+
+      let inputHtml = '';
+
+      if (q.type === 'open_ended') {
+        inputHtml = `
+          <textarea id="q-input" class="open-textarea"
+            placeholder="Type your answer here\u2026"
+            oninput="setTextResponse(${q.id}, this.value)">${saved ? h(saved) : ''}</textarea>
+        `;
+      } else if (q.type === 'likert') {
+        const opts = q.options.map((opt, i) => `
+          <div class="likert-option${saved === opt ? ' selected' : ''}"
+               onclick="selectByIndex(${q.id}, ${i}, this, 'likert-option')">
+            <div class="likert-circle">${i + 1}</div>
+            <span class="likert-label">${h(opt)}</span>
+          </div>
+        `).join('');
+        inputHtml = `<div class="likert-scale">${opts}</div>`;
+      } else {
+        const opts = q.options.map((opt, i) => `
+          <div class="option-item${saved === opt ? ' selected' : ''}"
+               onclick="selectByIndex(${q.id}, ${i}, this, 'option-item')">
+            <div class="option-radio"></div>
+            <span class="option-label">${h(opt)}</span>
+          </div>
+        `).join('');
+        inputHtml = `<div class="options-list">${opts}</div>`;
+      }
+
+      const badgeLabel = q.type === 'multiple_choice' ? 'Multiple Choice'
+                       : q.type === 'likert' ? 'Likert Scale' : 'Open-Ended';
+
+      card.innerHTML = `
+        <div class="q-meta">
+          <span class="q-number">Question ${index + 1} of ${total}</span>
+          <span class="q-type-badge badge-${q.type}">${badgeLabel}</span>
+        </div>
+        <div class="q-text">${h(q.question)}</div>
+        ${inputHtml}
+        <div class="nav-row">
+          <button class="btn btn-secondary" onclick="goBack()" ${index === 0 ? 'disabled' : ''}>← Back</button>
+          <button class="skip-btn" onclick="skipQuestion(${q.id})">Skip</button>
+          ${index < total - 1
+            ? `<button class="btn btn-primary" onclick="goNext()">Next →</button>`
+            : `<button class="btn btn-success" onclick="finishSurvey()">Submit Survey ✓</button>`}
+        </div>
+      `;
+    }
+
+    // ── Results screen ────────────────────────────────────────────────────
+    function renderResults() {
+      headerProgress.style.display = 'none';
+      const answered = Object.keys(state.responses).length;
+      const total = SURVEY.questions.length;
+
+      const sections = [
+        { type: 'multiple_choice', label: 'Multiple Choice' },
+        { type: 'likert',          label: 'Likert Scale'    },
+        { type: 'open_ended',      label: 'Open-Ended'      },
+      ];
+
+      let sectionsHtml = sections.map(({ type, label }) => {
+        const qs = SURVEY.questions.filter(q => q.type === type);
+        if (!qs.length) return '';
+        const items = qs.map(q => {
+          const ans = state.responses[q.id];
+          let ansHtml = ans
+            ? (type === 'open_ended'
+                ? `<div class="result-open">${h(ans)}</div>`
+                : `<div class="result-answer">${h(ans)}</div>`)
+            : `<div class="result-skipped">— Skipped</div>`;
+          return `<div class="result-item"><div class="result-q">Q${q.id}: ${h(q.question)}</div>${ansHtml}</div>`;
+        }).join('');
+        return `<div class="result-section"><div class="result-section-title">${label}</div>${items}</div>`;
+      }).join('');
+
+      card.innerHTML = `
+        <div class="completion-banner">
+          <div class="completion-icon">🎉</div>
+          <div class="completion-title">Survey Complete!</div>
+          <div class="completion-sub">You answered <strong>${answered}</strong> of <strong>${total}</strong> questions${total - answered > 0 ? ` (${total - answered} skipped)` : ''}.</div>
+        </div>
+        <h2 class="results-title">Your Responses</h2>
+        <p class="results-sub">Review your answers below, then export or retake.</p>
+        ${sectionsHtml}
+        <div class="export-row">
+          <button class="btn btn-primary" onclick="exportJSON()">⬇ Export JSON</button>
+          <button class="btn btn-outline" onclick="exportCSV()">⬇ Export CSV</button>
+          <button class="btn btn-secondary" onclick="retakeSurvey()">↺ Retake Survey</button>
+        </div>
+      `;
+    }
+
+    // ── Interaction handlers ──────────────────────────────────────────────
+    function startSurvey() {
+      state.screen = 'question';
+      renderQuestion(state.currentIndex);
+      window.scrollTo(0, 0);
+    }
+
+    function clearAndStart() {
+      state.responses = {};
+      state.currentIndex = 0;
+      try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
+      startSurvey();
+    }
+
+    function selectByIndex(qId, optionIndex, el, siblingClass) {
+      const value = SURVEY.questions.find(q => q.id === qId).options[optionIndex];
+      el.closest(`.${siblingClass}s-list, .likert-scale, .options-list`)
+        .querySelectorAll(`.${siblingClass}`)
+        .forEach(e => e.classList.remove('selected'));
+      el.classList.add('selected');
+      state.responses[qId] = value;
+      saveToStorage();
+      updateProgress();
+    }
+
+    function setTextResponse(qId, value) {
+      if (value.trim()) { state.responses[qId] = value; }
+      else { delete state.responses[qId]; }
+      saveToStorage();
+      updateProgress();
+    }
+
+    function goNext() {
+      if (state.currentIndex < SURVEY.questions.length - 1) {
+        state.currentIndex++;
+        renderQuestion(state.currentIndex);
+        window.scrollTo(0, 0);
+      }
+    }
+
+    function goBack() {
+      if (state.currentIndex > 0) {
+        state.currentIndex--;
+        renderQuestion(state.currentIndex);
+        window.scrollTo(0, 0);
+      }
+    }
+
+    function skipQuestion(qId) {
+      delete state.responses[qId];
+      saveToStorage();
+      if (state.currentIndex < SURVEY.questions.length - 1) {
+        state.currentIndex++;
+        renderQuestion(state.currentIndex);
+      } else {
+        finishSurvey();
+      }
+    }
+
+    function finishSurvey() {
+      state.screen = 'results';
+      renderResults();
+      window.scrollTo(0, 0);
+    }
+
+    function retakeSurvey() {
+      state.responses = {};
+      state.currentIndex = 0;
+      state.screen = 'welcome';
+      try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
+      renderWelcome();
+    }
+
+    // ── Export ────────────────────────────────────────────────────────────
+    function exportJSON() {
+      const data = {
+        survey: SURVEY.metadata.title,
+        exported_at: new Date().toISOString(),
+        responses: SURVEY.questions.map(q => ({
+          id: q.id,
+          type: q.type,
+          question: q.question,
+          answer: state.responses[q.id] || null,
+        }))
+      };
+      download('survey_response.json', JSON.stringify(data, null, 2), 'application/json');
+    }
+
+    function exportCSV() {
+      const header = ['Question ID', 'Type', 'Question', 'Answer'];
+      const rows = SURVEY.questions.map(q => [
+        q.id,
+        q.type,
+        `"${q.question.replace(/"/g, '""')}"`,
+        `"${(state.responses[q.id] || '').replace(/"/g, '""')}"`,
+      ]);
+      download('survey_response.csv', [header, ...rows].map(r => r.join(',')).join('\r\n'), 'text/csv');
+    }
+
+    function download(filename, content, mime) {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([content], { type: mime }));
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
+    // ── Util ──────────────────────────────────────────────────────────────
+    function h(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    // ── Fix querySelector for sibling selection ───────────────────────────
+    // Override selectByIndex to handle both list types correctly
+    window.selectByIndex = function(qId, optionIndex, el, siblingClass) {
+      const value = SURVEY.questions.find(q => q.id === qId).options[optionIndex];
+      const parent = el.parentElement;
+      parent.querySelectorAll(`.${siblingClass}`).forEach(e => e.classList.remove('selected'));
+      el.classList.add('selected');
+      state.responses[qId] = value;
+      saveToStorage();
+      updateProgress();
+    };
+
+    // ── Init ──────────────────────────────────────────────────────────────
+    state.responses = loadFromStorage();
+    renderWelcome();
+  </script>
+
+</body>
+</html>

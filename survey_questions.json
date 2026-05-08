@@ -1,0 +1,237 @@
+{
+  "metadata": {
+    "title": "Survey Questionnaire",
+    "source": "pasted text",
+    "generated_by": "survey_generator.py (rule-based)",
+    "total_questions": 21,
+    "question_types": {
+      "likert": 12,
+      "multiple_choice": 5,
+      "open_ended": 4
+    }
+  },
+  "questions": [
+    {
+      "id": 1,
+      "type": "multiple_choice",
+      "question": "Which of the following best describes your role?",
+      "options": [
+        "Executive / Senior Leadership",
+        "Manager / Team Lead",
+        "Individual Contributor",
+        "Consultant / Advisor",
+        "Other"
+      ]
+    },
+    {
+      "id": 2,
+      "type": "multiple_choice",
+      "question": "Which sector does your organization operate in?",
+      "options": [
+        "Public Sector / Government",
+        "Private Sector",
+        "Non-profit / NGO",
+        "Academia / Research",
+        "Other"
+      ]
+    },
+    {
+      "id": 3,
+      "type": "multiple_choice",
+      "question": "How long have you been working in your current field?",
+      "options": [
+        "Less than 2 years",
+        "2–5 years",
+        "6–10 years",
+        "More than 10 years"
+      ]
+    },
+    {
+      "id": 4,
+      "type": "likert",
+      "question": "To what extent do you agree with the following statement: \"This report found that 72% of organizations struggle with data governance.\"",
+      "options": [
+        "Strongly Agree",
+        "Agree",
+        "Neutral",
+        "Disagree",
+        "Strongly Disagree"
+      ]
+    },
+    {
+      "id": 5,
+      "type": "likert",
+      "question": "To what extent do you agree with the following statement: \"The study indicates that remote work policies have significantly increased employee satisfaction.\"",
+      "options": [
+        "Strongly Agree",
+        "Agree",
+        "Neutral",
+        "Disagree",
+        "Strongly Disagree"
+      ]
+    },
+    {
+      "id": 6,
+      "type": "likert",
+      "question": "To what extent do you agree with the following statement: \"Research suggests that cybersecurity investment is critical for business continuity.\"",
+      "options": [
+        "Strongly Agree",
+        "Agree",
+        "Neutral",
+        "Disagree",
+        "Strongly Disagree"
+      ]
+    },
+    {
+      "id": 7,
+      "type": "likert",
+      "question": "To what extent do you agree with the following statement: \"The report recommends implementing regular staff training programs.\"",
+      "options": [
+        "Strongly Agree",
+        "Agree",
+        "Neutral",
+        "Disagree",
+        "Strongly Disagree"
+      ]
+    },
+    {
+      "id": 8,
+      "type": "likert",
+      "question": "To what extent do you agree with the following statement: \"Results show that customer engagement improved by 45% after policy changes.\"",
+      "options": [
+        "Strongly Agree",
+        "Agree",
+        "Neutral",
+        "Disagree",
+        "Strongly Disagree"
+      ]
+    },
+    {
+      "id": 9,
+      "type": "likert",
+      "question": "How important is Found to your organization?",
+      "options": [
+        "Very Important",
+        "Important",
+        "Neutral",
+        "Unimportant",
+        "Very Unimportant"
+      ]
+    },
+    {
+      "id": 10,
+      "type": "likert",
+      "question": "How important is Organizations to your organization?",
+      "options": [
+        "Very Important",
+        "Important",
+        "Neutral",
+        "Unimportant",
+        "Very Unimportant"
+      ]
+    },
+    {
+      "id": 11,
+      "type": "likert",
+      "question": "How important is Struggle to your organization?",
+      "options": [
+        "Very Important",
+        "Important",
+        "Neutral",
+        "Unimportant",
+        "Very Unimportant"
+      ]
+    },
+    {
+      "id": 12,
+      "type": "likert",
+      "question": "How important is Data to your organization?",
+      "options": [
+        "Very Important",
+        "Important",
+        "Neutral",
+        "Unimportant",
+        "Very Unimportant"
+      ]
+    },
+    {
+      "id": 13,
+      "type": "likert",
+      "question": "How satisfied are you with how your organization currently addresses Found?",
+      "options": [
+        "Very Satisfied",
+        "Satisfied",
+        "Neutral",
+        "Dissatisfied",
+        "Very Dissatisfied"
+      ]
+    },
+    {
+      "id": 14,
+      "type": "likert",
+      "question": "How effective are your organization's current strategies related to Organizations?",
+      "options": [
+        "Very Effective",
+        "Effective",
+        "Neutral",
+        "Ineffective",
+        "Very Ineffective"
+      ]
+    },
+    {
+      "id": 15,
+      "type": "multiple_choice",
+      "question": "How frequently does your organization review or update its approach to Struggle?",
+      "options": [
+        "Always",
+        "Often",
+        "Sometimes",
+        "Rarely",
+        "Never"
+      ]
+    },
+    {
+      "id": 16,
+      "type": "likert",
+      "question": "How likely is your organization to take action on Data in the next 12 months?",
+      "options": [
+        "Very Likely",
+        "Likely",
+        "Unsure",
+        "Unlikely",
+        "Very Unlikely"
+      ]
+    },
+    {
+      "id": 17,
+      "type": "open_ended",
+      "question": "What are the most significant challenges your organization faces that relate to the topics covered in this report?"
+    },
+    {
+      "id": 18,
+      "type": "open_ended",
+      "question": "What actions has your organization already taken in response to findings or recommendations similar to those in this report?"
+    },
+    {
+      "id": 19,
+      "type": "open_ended",
+      "question": "What additional resources, tools, or support would help your organization improve in the areas highlighted by this report?"
+    },
+    {
+      "id": 20,
+      "type": "open_ended",
+      "question": "Is there anything important about your organization's context that is not captured by the questions above? Please describe."
+    },
+    {
+      "id": 21,
+      "type": "multiple_choice",
+      "question": "Overall, how would you rate the relevance of this report to your organization's current priorities?",
+      "options": [
+        "Highly Relevant",
+        "Relevant",
+        "Somewhat Relevant",
+        "Not Relevant"
+      ]
+    }
+  ]
+}
