@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Logs
+debug.log
+*.log
+
+# Editor
+.vscode/
+
+# Local preview / generated artifacts
+_preview.html
+_inspect_*.py
