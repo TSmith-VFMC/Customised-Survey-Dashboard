@@ -46,6 +46,11 @@ CONFIG = {
     "source_glob": "VFM_Cases_*.xlsx",
     "closed_states": {"Closed", "Resolved", "Cancelled"},
     "priority_map": {"Critical": "P1", "High": "P2", "Moderate": "P3", "Low": "P4"},
+    # Cases whose "Customer Keyword" contains this keyword are parked awaiting
+    # root-cause analysis: excluded from KPIs, risk matrix, score, watchlist and
+    # the priority bars, and surfaced separately (own bar + table).
+    "pending_rca_column": "Customer Keyword",
+    "pending_rca_keyword": "Pending RCA",
     "age_buckets": [(0, 2), (3, 5), (6, 10), (11, 10**6)],
     "age_bucket_labels": ["0-2d", "3-5d", "6-10d", "10+d"],
     # RAG per priority row x age bucket column ("G" green / "A" amber / "R" red)
@@ -89,6 +94,9 @@ COLORS = {
     "grey_border": RGBColor(0xE6, 0xE6, 0xE6),
     "text_dark": RGBColor(0x1F, 0x29, 0x37),
     "text_muted": RGBColor(0x5B, 0x63, 0x70),
+    "blue": RGBColor(0x25, 0x63, 0xEB),
+    "slate": RGBColor(0x64, 0x74, 0x8B),
+    "purple": RGBColor(0x7C, 0x3A, 0xED),
 }
 
 RAG_FILL = {"G": COLORS["green"], "A": COLORS["amber"], "R": COLORS["red"]}
@@ -143,6 +151,21 @@ def age_bucket_index(days):
         if lo <= days <= hi:
             return i
     return len(CONFIG["age_buckets"]) - 1
+
+
+def detect_pending_rca(open_df):
+    """Boolean Series flagging cases parked awaiting root-cause analysis.
+
+    True where the CONFIG["pending_rca_column"] cell contains
+    CONFIG["pending_rca_keyword"] (case-insensitive). The column is optional -
+    older exports do not have it, in which case no case is treated as pending
+    and the dashboard behaves exactly as before.
+    """
+    col = CONFIG["pending_rca_column"]
+    if col not in open_df.columns:
+        return pd.Series(False, index=open_df.index)
+    values = open_df[col].fillna("").astype(str)
+    return values.str.contains(CONFIG["pending_rca_keyword"], case=False, na=False, regex=False)
 
 
 def detect_repeat_themes(df, open_index):
@@ -202,25 +225,34 @@ def compute_metrics(df, asof):
     open_df["RAG"] = open_df.apply(
         lambda r: CONFIG["risk_matrix"][r["PriorityCode"]][r["AgeBucket"]], axis=1
     )
+    open_df["PendingRCA"] = detect_pending_rca(open_df)
     open_df = open_df.sort_values("Days Open", ascending=False)
 
-    # ---- KPI tiles ----
-    p1_open = int((open_df["PriorityCode"] == "P1").sum())
+    # Pending-RCA cases are parked awaiting root-cause analysis: they are
+    # excluded from the KPIs, risk matrix, score, watchlist and priority bars,
+    # and surfaced separately (own bar + table). Everything below is therefore
+    # computed on the "active" (non-RCA) open cases.
+    active_df = open_df[~open_df["PendingRCA"]].copy()
+    rca_df = open_df[open_df["PendingRCA"]].copy()
+
+    # ---- KPI tiles (active / non-RCA open cases) ----
+    p1_open = int((active_df["PriorityCode"] == "P1").sum())
     aged_p2 = int(
-        ((open_df["PriorityCode"] == "P2") & (open_df["Days Open"] > CONFIG["aged_high_priority_days"])).sum()
+        ((active_df["PriorityCode"] == "P2") & (active_df["Days Open"] > CONFIG["aged_high_priority_days"])).sum()
     )
-    backlog = int(len(open_df))
+    backlog = int(len(active_df))
+    rca_pending = int(len(rca_df))
 
     # ---- Repeat incident themes (auto-detected, informational callout) ----
     themes, repeat_open_cases = detect_repeat_themes(df, set(open_df.index))
     repeat_incidents = int(len(repeat_open_cases))
 
-    # ---- Priority x Age matrix counts (also drive the scorecard) ----
+    # ---- Priority x Age matrix counts (active cases; drive the scorecard) ----
     matrix_counts = {}
     for p in ["P1", "P2", "P3", "P4"]:
         row_counts = []
         for bucket_i in range(len(CONFIG["age_buckets"])):
-            cnt = int(((open_df["PriorityCode"] == p) & (open_df["AgeBucket"] == bucket_i)).sum())
+            cnt = int(((active_df["PriorityCode"] == p) & (active_df["AgeBucket"] == bucket_i)).sum())
             row_counts.append(cnt)
         matrix_counts[p] = row_counts
 
@@ -255,7 +287,7 @@ def compute_metrics(df, asof):
     # priority ticket happens to be older.
     rag_rank = {"R": 0, "A": 1, "G": 2}
     priority_rank = {"P1": 0, "P2": 1, "P3": 2, "P4": 3}
-    watch = open_df.copy()
+    watch = active_df.copy()
     watch["Eligible"] = (
         (watch["Days Open"] > 30)
         | (watch["State"] == "Escalation")
@@ -270,6 +302,12 @@ def compute_metrics(df, asof):
         by=["_priority_rank", "_rag_rank", "Days Open"], ascending=[True, True, False]
     )
     top5 = watch_pool.head(5)
+
+    # ---- Pending RCA cases (same columns as the watchlist, RCA only) ----
+    rca_cases = rca_df.assign(
+        _priority_rank=rca_df["PriorityCode"].map(priority_rank),
+        _rag_rank=rca_df["RAG"].map(rag_rank),
+    ).sort_values(by=["_priority_rank", "_rag_rank", "Days Open"], ascending=[True, True, False])
 
     # ---- MTTR trend (last N weeks) for P1 & P2 ----
     # Uses the median (not mean) resolution time per week - a handful of very
@@ -298,7 +336,7 @@ def compute_metrics(df, asof):
         week_labels.append(f"W{weeks - w_i + 1}")
 
     open_by_priority = {
-        p: int((open_df["PriorityCode"] == p).sum()) for p in ["P1", "P2", "P3", "P4"]
+        p: int((active_df["PriorityCode"] == p).sum()) for p in ["P1", "P2", "P3", "P4"]
     }
 
     return {
@@ -320,6 +358,8 @@ def compute_metrics(df, asof):
         "mttr_p2": mttr_p2,
         "week_labels": week_labels,
         "open_by_priority": open_by_priority,
+        "rca_pending": rca_pending,
+        "rca_cases": rca_cases,
     }
 
 
@@ -566,18 +606,27 @@ def build_slide2(prs, m):
     add_text(slide, Inches(6.8), Inches(0.85), Inches(6.2), Inches(0.3),
               f'Open Cases by Priority (as at {asof_str})', size=13, bold=True)
     bar_data = CategoryChartData()
-    bar_data.categories = ["P1", "P2 High", "P3 Moderate", "P4 Low"]
+    bar_data.categories = ["P1", "P2 High", "P3 Moderate", "P4 Low", "RCA Pending"]
     bar_data.add_series("Open Cases", [
         m["open_by_priority"]["P1"], m["open_by_priority"]["P2"],
-        m["open_by_priority"]["P3"], m["open_by_priority"]["P4"],
+        m["open_by_priority"]["P3"], m["open_by_priority"]["P4"], m["rca_pending"],
     ])
     bframe = slide.shapes.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, Inches(6.8), Inches(1.2),
                                       Inches(6.2), Inches(3.4), bar_data)
-    bframe.chart.has_legend = False
+    bchart = bframe.chart
+    bchart.has_legend = False
+    bar_fills = [COLORS["red"], COLORS["amber"], COLORS["blue"], COLORS["slate"], COLORS["purple"]]
+    bpoints = bchart.plots[0].series[0].points
+    for i, point in enumerate(bpoints):
+        point.format.fill.solid()
+        point.format.fill.fore_color.rgb = bar_fills[i]
+    add_text(slide, Inches(6.8), Inches(4.65), Inches(6.2), Inches(0.25),
+              "RCA Pending (purple) are open cases parked awaiting root-cause analysis - excluded from the other bars and the score.",
+              size=8, color=COLORS["text_muted"])
 
     # ---- Management Attention Score panel ----
     panel_top = Inches(4.8)
-    panel_h = Inches(2.4)
+    panel_h = Inches(2.6)
     add_rect(slide, Inches(0.3), panel_top, Inches(12.7), panel_h, fill=COLORS["white"], line=COLORS["grey_border"])
     add_text(slide, Inches(0.5), panel_top + Inches(0.1), Inches(6), Inches(0.3),
               "Management Attention Score", size=16, bold=True)
@@ -620,17 +669,68 @@ def build_slide2(prs, m):
     )
     add_text(slide, Inches(2.6), panel_top + Inches(0.85), Inches(3.7), Inches(1.5), scoring_lines, size=9.5)
 
-    add_text(slide, Inches(6.4), panel_top + Inches(0.5), Inches(3.4), Inches(0.25), "Today's Drivers", size=12, bold=True)
+    add_text(slide, Inches(6.4), panel_top + Inches(0.5), Inches(3.6), Inches(0.25), "Today's Drivers", size=12, bold=True)
     driver_lines = "\n".join(f"- {d}" for d in m["drivers"])
     driver_lines += f'\nScore: {CONFIG["attention_start"]} - {m["total_deduction"]} = {m["score"]}'
-    add_text(slide, Inches(6.4), panel_top + Inches(0.85), Inches(3.7), Inches(1.5), driver_lines, size=10.5)
+    add_text(slide, Inches(6.4), panel_top + Inches(0.85), Inches(3.7), Inches(1.1), driver_lines, size=10.5)
 
-    add_text(slide, Inches(10.4), panel_top + Inches(0.5), Inches(2.3), Inches(0.25), "RAG Bands", size=12, bold=True)
-    band_defs = [("Green  80 - 100", COLORS["green"]), ("Amber  50 - 79", COLORS["amber"]), ("Red    < 50", COLORS["red"])]
-    for i, (label, color) in enumerate(band_defs):
-        y = panel_top + Inches(0.9) + Inches(0.4) * i
-        add_rect(slide, Inches(10.4), y, Inches(0.35), Inches(0.3), fill=color)
-        add_text(slide, Inches(10.85), y, Inches(1.9), Inches(0.3), label, size=11)
+    # "Excluded from Score" note sits below Today's Drivers
+    add_text(slide, Inches(6.4), panel_top + Inches(1.95), Inches(3.6), Inches(0.25), "Excluded from Score", size=11, bold=True)
+    add_text(slide, Inches(6.4), panel_top + Inches(2.25), Inches(3.7), Inches(0.6),
+              f'{m["rca_pending"]} Pending RCA case(s) are parked awaiting root-cause analysis and are listed separately on the next page.',
+              size=10, color=COLORS["text_muted"])
+
+    # RAG bands sit in the third column, right of Today's Drivers, as a vertical list
+    add_text(slide, Inches(10.4), panel_top + Inches(0.5), Inches(2.5), Inches(0.25), "RAG Bands", size=12, bold=True)
+    band_defs = [("Green 80-100", COLORS["green"]), ("Amber 50-79", COLORS["amber"]), ("Red < 50", COLORS["red"])]
+    by = panel_top + Inches(0.9)
+    for label, color in band_defs:
+        add_rect(slide, Inches(10.4), by, Inches(0.3), Inches(0.28), fill=color)
+        add_text(slide, Inches(10.75), by - Inches(0.02), Inches(2.0), Inches(0.3), label, size=10)
+        by = by + Inches(0.4)
+
+
+def build_slide3(prs, m):
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    W, H = prs.slide_width, prs.slide_height
+    asof_str = m["asof"].strftime("%d %b %Y")
+
+    add_header(slide, "BNY Managed Data Services - Pending RCA (Root Cause Analysis in Progress)",
+                f"Open cases parked awaiting RCA - excluded from the Management Attention Score, KPIs & Watchlist | As at {asof_str}", W)
+
+    rca = m["rca_cases"]
+    n = len(rca)
+    add_text(slide, Inches(0.3), Inches(0.95), Inches(12.7), Inches(0.3),
+              f"Pending RCA Cases ({n})", size=13, bold=True)
+
+    rows = max(1, n) + 1
+    tbl_h = Inches(min(5.8, 0.4 * rows))
+    tbl_shape = slide.shapes.add_table(rows, 6, Inches(0.3), Inches(1.35), Inches(12.7), tbl_h)
+    table = tbl_shape.table
+    table.columns[0].width = Inches(1.3)
+    table.columns[1].width = Inches(1.1)
+    table.columns[2].width = Inches(0.8)
+    table.columns[3].width = Inches(0.8)
+    table.columns[4].width = Inches(7.3)
+    table.columns[5].width = Inches(1.4)
+    headers = ["Case", "Priority", "Days", "RAG", "Issue Summary", "Escalated?"]
+    for c, h in enumerate(headers):
+        set_table_cell(table, 0, c, h, size=10, bold=True, fill=COLORS["grey_bg"])
+    if n:
+        for ri in range(n):
+            row = rca.iloc[ri]
+            rag = row["RAG"]
+            set_table_cell(table, ri + 1, 0, row["Number"], size=9)
+            set_table_cell(table, ri + 1, 1, row["Priority"], size=9)
+            set_table_cell(table, ri + 1, 2, f'{row["Days Open"]:.0f}', size=9, align=PP_ALIGN.CENTER)
+            set_table_cell(table, ri + 1, 3, RAG_LABEL[rag][0], size=9, bold=True,
+                            color=COLORS["white"], fill=RAG_FILL[rag], align=PP_ALIGN.CENTER)
+            subj = str(row["Subject"])
+            set_table_cell(table, ri + 1, 4, subj[:110] + ("..." if len(subj) > 110 else ""), size=9)
+            set_table_cell(table, ri + 1, 5, "Y" if row["State"] == "Escalation" else "N", size=9, align=PP_ALIGN.CENTER)
+    else:
+        for c in range(6):
+            set_table_cell(table, 1, c, "No Pending RCA cases" if c == 0 else "", size=9)
 
 
 # --------------------------------------------------------------------------
@@ -651,6 +751,7 @@ def main():
 
     build_slide1(prs, m)
     build_slide2(prs, m)
+    build_slide3(prs, m)
 
     out_name = f'BNY_Executive_Dashboard_Services_{asof.strftime("%d%m%Y")}.pptx'
     out_path = os.path.join(CONFIG["source_dir"], out_name)
@@ -660,7 +761,7 @@ def main():
     print("\n--- Summary ---")
     print(f"Mgmt Attention Score: {m['score']} ({m['band']})")
     print(f"P1 open: {m['p1_open']} | Aged P2: {m['aged_p2']} | Repeat incidents: {m['repeat_incidents']}")
-    print(f"Backlog: {m['backlog']}")
+    print(f"Backlog: {m['backlog']} | Pending RCA (excluded): {m['rca_pending']}")
     print("Score drivers:", "; ".join(m["drivers"]))
     print("Repeat themes:", [t["theme"] for t in m["themes"]])
 

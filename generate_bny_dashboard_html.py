@@ -95,7 +95,7 @@ def svg_bar_chart(categories, values):
     n = len(categories)
     slot = plot_w / n
     bar_w = slot * 0.55
-    colors = ["#dc2626", "#f59e0b", "#2563eb", "#64748b"]
+    colors = ["#dc2626", "#f59e0b", "#2563eb", "#64748b", "#7c3aed"]
 
     parts = [f'<svg viewBox="0 0 {w} {h}" width="100%" role="img" aria-label="Open cases by priority chart">']
     for g in range(5):
@@ -174,6 +174,33 @@ def watchlist_html(m):
             f"<td style='text-align:center'>{esc_flag}</td>"
             "</tr>"
         )
+    return (
+        '<table class="data"><thead><tr>'
+        "<th>Case</th><th>Priority</th><th>Days</th><th>RAG</th><th>Issue Summary</th><th>Escalated?</th>"
+        "</tr></thead><tbody>" + "".join(rows) + "</tbody></table>"
+    )
+
+
+def rca_table_html(m):
+    rca = m["rca_cases"]
+    rows = []
+    for i in range(len(rca)):
+        r = rca.iloc[i]
+        rag = r["RAG"]
+        subj = esc(str(r["Subject"]))
+        esc_flag = "Y" if r["State"] == "Escalation" else "N"
+        rows.append(
+            "<tr>"
+            f"<td>{esc(r['Number'])}</td>"
+            f"<td>{esc(r['Priority'])}</td>"
+            f"<td style='text-align:center'>{r['Days Open']:.0f}</td>"
+            f"<td style='text-align:center'><span class='pill' style='background:{RAG_HEX[rag]}'>{RAG_LABEL[rag][0]}</span></td>"
+            f"<td>{subj}</td>"
+            f"<td style='text-align:center'>{esc_flag}</td>"
+            "</tr>"
+        )
+    if not rows:
+        rows.append("<tr><td colspan='6'>No Pending RCA cases</td></tr>")
     return (
         '<table class="data"><thead><tr>'
         "<th>Case</th><th>Priority</th><th>Days</th><th>RAG</th><th>Issue Summary</th><th>Escalated?</th>"
@@ -334,8 +361,8 @@ def build_html(m):
     asof_str = m["asof"].strftime("%d %b %Y")
     line = svg_line_chart(m["week_labels"], m["mttr_p1"], m["mttr_p2"], CONFIG["mttr_outlier_cap_days"])
     bars = svg_bar_chart(
-        ["P1", "P2 High", "P3 Moderate", "P4 Low"],
-        [m["open_by_priority"]["P1"], m["open_by_priority"]["P2"], m["open_by_priority"]["P3"], m["open_by_priority"]["P4"]],
+        ["P1", "P2 High", "P3 Moderate", "P4 Low", "RCA Pending"],
+        [m["open_by_priority"]["P1"], m["open_by_priority"]["P2"], m["open_by_priority"]["P3"], m["open_by_priority"]["P4"], m["rca_pending"]],
     )
     driver_strip = f'{m["band"]} &ndash; Drivers: ' + " | ".join(esc(d) for d in m["drivers"])
 
@@ -438,10 +465,14 @@ def build_html(m):
         <div class="chart-card">
           <div class="section-title">Open Cases by Priority (as at {asof_str})</div>
           {bars}
+          <div class="chart-note">RCA Pending (purple) are open cases parked awaiting root-cause analysis &ndash; excluded from the other priority bars and the score.</div>
         </div>
       </div>
       <div class="section-title">Management Attention Score</div>
       {scoring_html(m)}
+      <div class="section-title" style="margin-top:22px">Pending RCA &ndash; Root Cause Analysis in Progress ({m['rca_pending']})</div>
+      <div class="chart-note" style="margin-bottom:8px">These open cases are parked awaiting root-cause analysis and are excluded from the Management Attention Score, KPIs, risk matrix and Executive Watchlist.</div>
+      {rca_table_html(m)}
     </div>
     <div class="footer-note">
       Repeat Incident Themes are auto-detected from recurring Subject text. The Management Attention Score is derived solely from open case priority and age (see Appendix). Review before external distribution.
