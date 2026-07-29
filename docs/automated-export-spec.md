@@ -33,7 +33,9 @@ These `selectedColumns` map 1:1 to the fields `load_cases()` already consumes
 endpoint can be called programmatically, the manual download step is eliminated.
 
 The blocker is **authentication**: the endpoint is gated by the session the browser
-obtains after an interactive login (SSO + MFA).
+obtains after an interactive login. The portal uses a **plain username + password**
+login (confirmed **no MFA**), which means the login form can be completed
+programmatically from a credential store, enabling fully unattended runs.
 
 ## 2. Goal
 
@@ -42,65 +44,77 @@ folder, with **no credentials stored in code or the repository**, so a single co
 (or scheduled task) can refresh the dashboards end to end.
 
 ### Non-goals
-- Storing or transmitting the user's password / MFA secrets through any script.
-- Fully unattended (headless, zero-touch) automation on day one — see Open Questions.
+- Storing the user's password in code, the repository, logs, or command output.
 - Changes to the scoring model, chart logic, or output formats.
 
-## 3. Proposed Solution — Playwright persistent session
+## 3. Proposed Solution — Playwright with credential-store login
 
-Use Playwright (Python) with a **persistent browser profile** so the interactive
-SSO/MFA login is performed once and the resulting session is reused.
+Because the portal requires only a username + password (no MFA), the login can be
+automated end to end. Credentials are read at runtime from **Windows Credential
+Manager** via the `keyring` library — they are entered once by the user directly into
+their own terminal and never pass through code, the repo, or this assistant.
 
 ### Flow
-1. Launch Chromium with a persistent `user_data_dir` stored locally (git-ignored).
-2. **First run / expired session:** open the portal in a headed window; the user
-   completes login + MFA manually. Cookies persist in the profile.
-3. Call the export endpoint **using the authenticated session**
+1. Read `username` / `password` from Windows Credential Manager (`keyring`).
+2. Launch Chromium (headless by default) with a persistent `user_data_dir` stored
+   locally (git-ignored) so a valid session is reused between runs.
+3. If not already authenticated, navigate to the portal login page, fill the
+   username + password fields, and submit.
+4. Call the export endpoint **using the authenticated session**
    (`context.request.get(EXPORT_URL)`), which streams back the `.xlsx` bytes.
-4. Save the file into `CONFIG["source_dir"]` using the existing filename pattern
+5. Save the file into `CONFIG["source_dir"]` using the existing filename pattern
    `VFM_Cases_MM-DD-YYYY_H_MM_AMPM.xlsx` (current local time), so the generators'
    "newest file" selection picks it up automatically.
-5. **Subsequent runs:** the stored session is reused silently. On a `401`/redirect to
-   login, the window re-opens for a quick re-auth.
+6. **Subsequent runs:** reuse the stored session; only re-login when it has expired.
 
 ### Why this approach
-- Handles **SSO + MFA** cleanly (human does it once, interactively).
-- **No secrets in code** — only a local browser profile, which is git-ignored.
+- **No MFA** means it can run **headless and scheduled** with no human in the loop.
+- **No secrets in code** — the password lives only in Windows Credential Manager.
 - Reuses the existing file-based pipeline; the generators are unchanged.
+
+### Credential setup (one-time, done by the user)
+A small helper (`--set-credentials`) prompts for the username and password using
+`getpass` and stores them with `keyring.set_password(...)`. The password is typed
+directly into the user's terminal; it is never handed to any script argument or to
+this assistant.
 
 ### Alternatives considered
 | Option | Pros | Cons |
 | --- | --- | --- |
 | **Token/cookie capture + `requests`** | Simplest code | Token expires; manual re-capture from DevTools each time |
-| **Service-account / API key** (ask Eagle/BNY) | Cleanest for scheduled, unattended runs | Depends on the vendor offering one; procurement/approval |
-| **Playwright persistent session** *(chosen)* | Handles MFA, no stored secrets, reuses session | First run and periodic re-login are interactive |
+| **Service-account / API key** (ask Eagle/BNY) | Cleanest, no browser at all | Depends on the vendor offering one; procurement/approval |
+| **Playwright + credential-store login** *(chosen)* | Headless, schedulable, no MFA to satisfy, no secrets in code | Password stored in OS credential vault (acceptable); UI selectors can change |
 
 ## 4. Implementation Sketch
 
 New module: `fetch_latest_export.py`
 
 - `EXPORT_URL` constant (the endpoint above).
-- `PORTAL_HOME` constant for the login landing page.
+- `PORTAL_LOGIN` constant for the login page; `LOGIN_SELECTORS` for the username /
+  password / submit fields (to be confirmed against the live page).
 - `AUTH_DIR = ".auth/"` for the persistent profile (git-ignored).
-- `fetch_export(headed=True) -> Path`:
-  1. `p = sync_playwright().start()`
-  2. `ctx = p.chromium.launch_persistent_context(AUTH_DIR, headless=False)`
-  3. Navigate to `PORTAL_HOME`; if redirected to login, wait for the user to finish.
-  4. `resp = ctx.request.get(EXPORT_URL)`; assert `resp.ok` and content-type is a
+- `KEYRING_SERVICE = "eagle-xpclientportal"` for credential lookup.
+- `set_credentials()` (`--set-credentials`): prompt via `getpass`, store with `keyring`.
+- `fetch_export() -> Path`:
+  1. Load `username` / `password` from `keyring`.
+  2. `ctx = p.chromium.launch_persistent_context(AUTH_DIR, headless=True)`.
+  3. Probe the export URL; if it returns a login page/redirect, perform the form login
+     and retry.
+  4. `resp = ctx.request.get(EXPORT_URL)`; assert `resp.ok` and the content-type is a
      spreadsheet (guard against being handed an HTML login page).
   5. Write bytes to `source_dir / f"VFM_Cases_{now:%m-%d-%Y_%-I_%M_%p}.xlsx"`.
   6. Return the path; close context.
-- Optional `--headless` retry: attempt silent download first; fall back to headed
-  login only when the session is invalid.
 - Wire into `Run_BNY_Dashboard.bat` **before** the two generator calls.
 
 ### Dependencies
-- Add `playwright>=1.44` to `requirements.txt`.
+- Add `playwright>=1.44` and `keyring>=24` to `requirements.txt`.
 - One-time: `playwright install chromium`.
 
 ### Security & governance
 - `.auth/` (browser profile / cookies) and any `*.xlsx` stay **git-ignored**.
-- No username, password, or MFA material is ever read, logged, or stored by the script.
+- The password is stored **only** in Windows Credential Manager (via `keyring`); it is
+  never read into source, logged, printed, passed as a CLI argument, or shared with
+  this assistant. It is entered once directly by the user via `getpass`.
 - Prefer a **read-only** portal account if BNY can provide one.
 - Confirm automated export is permitted under BNY/Eagle acceptable-use policy.
 - Validate the downloaded payload is a real spreadsheet before overwriting anything.
@@ -109,24 +123,26 @@ New module: `fetch_latest_export.py`
 
 - [ ] Running `fetch_latest_export.py` produces a valid `VFM_Cases_*.xlsx` in the
       source folder that opens in the generators without changes.
-- [ ] First run prompts an interactive login; a second run within the session window
-      downloads **without** prompting.
+- [ ] With valid stored credentials, the download runs **headless with no prompts**.
 - [ ] No credentials or tokens appear in the repo, logs, or command output.
 - [ ] `Run_BNY_Dashboard.bat` performs fetch → HTML → PPTX in one invocation.
-- [ ] A clear, actionable error is shown when the session has expired.
+- [ ] A clear, actionable error is shown when login fails or the session has expired.
 
 ## 6. Open Questions
-1. Does login present an **MFA** challenge, and how often is re-auth forced
-   (every visit / daily / weekly)? Drives how "hands-off" scheduling can be.
+1. ~~Does login present an **MFA** challenge?~~ **Resolved:** no MFA — username +
+   password only.
 2. Does Eagle/BNY offer an **API token or service account** for this portal? If so,
-   the service-account option supersedes the browser approach for scheduled runs.
+   it would remove the browser dependency entirely for scheduled runs.
 3. Are there **filters** we should bake into `filterValues` (e.g. environment,
    customer) rather than exporting everything?
 4. Preferred **cadence** — on demand, or a scheduled Windows Task?
+5. Exact **login-page field selectors** (username / password / submit) — to be
+   captured from the live page during implementation.
 
 ## 7. Rollout Plan
-1. Build `fetch_latest_export.py` behind its own entry point (no changes to existing
-   generators).
-2. Manual validation over a few refresh cycles to confirm session longevity.
-3. Add the batch-file wiring once stable.
-4. Revisit the service-account/API-token path for fully scheduled automation.
+1. Build `fetch_latest_export.py` with `--set-credentials` and a headless
+   `fetch_export()` (no changes to existing generators).
+2. Capture the login-page selectors and confirm a clean headless download.
+3. Manual validation over a few refresh cycles to confirm session longevity.
+4. Add the batch-file wiring, then optionally a scheduled Windows Task.
+5. Revisit the service-account/API-token path as a lower-maintenance long-term option.
