@@ -636,58 +636,34 @@ def build_slide2(prs, m):
               size=8, color=COLORS["text_muted"])
 
     # ---- Management Attention Score panel ----
+    # Score circle + scoring-model rulebook now live in the appendix; page 2 just
+    # shows today's drivers horizontally so the RCA content below has more room.
     panel_top = Inches(4.8)
-    panel_h = Inches(2.6)
+    panel_h = Inches(2.05)
     add_rect(slide, Inches(0.3), panel_top, Inches(12.7), panel_h, fill=COLORS["white"], line=COLORS["grey_border"])
     add_text(slide, Inches(0.5), panel_top + Inches(0.1), Inches(6), Inches(0.3),
               "Management Attention Score", size=16, bold=True)
 
+    add_text(slide, Inches(0.5), panel_top + Inches(0.55), Inches(6), Inches(0.25), "Today's Drivers", size=12, bold=True)
+
+    # Drivers laid out horizontally as pills across the panel
+    dx = Inches(0.5)
+    row_y = panel_top + Inches(0.9)
+    for d in m["drivers"]:
+        pill_w = Inches(max(1.2, 0.11 * len(d) + 0.3))
+        add_rect(slide, dx, row_y, pill_w, Inches(0.4), fill=COLORS["grey_bg"], line=COLORS["grey_border"])
+        add_text(slide, dx + Inches(0.1), row_y + Inches(0.04), pill_w, Inches(0.32), d, size=10)
+        dx = dx + pill_w + Inches(0.2)
+    total_txt = f'Score: {CONFIG["attention_start"]} - {m["total_deduction"]} = {m["score"]} ({m["band"]})'
+    total_w = Inches(max(1.6, 0.11 * len(total_txt) + 0.3))
     band_fill = {"GREEN": COLORS["green"], "AMBER": COLORS["amber"], "RED": COLORS["red"]}[m["band"]]
-    circle = slide.shapes.add_shape(9, Inches(0.6), panel_top + Inches(0.5), Inches(1.7), Inches(1.7))  # 9 = OVAL
-    circle.fill.solid()
-    circle.fill.fore_color.rgb = band_fill
-    circle.line.fill.background()
-    circle.shadow.inherit = False
-    tf = circle.text_frame
-    tf.word_wrap = True
-    p = tf.paragraphs[0]
-    p.alignment = PP_ALIGN.CENTER
-    r = p.add_run()
-    r.text = str(m["score"])
-    r.font.size = Pt(40)
-    r.font.bold = True
-    r.font.color.rgb = COLORS["white"]
-    p2 = tf.add_paragraph()
-    p2.alignment = PP_ALIGN.CENTER
-    r2 = p2.add_run()
-    r2.text = m["band"]
-    r2.font.size = Pt(12)
-    r2.font.bold = True
-    r2.font.color.rgb = COLORS["white"]
+    add_rect(slide, dx, row_y, total_w, Inches(0.4), fill=band_fill)
+    add_text(slide, dx + Inches(0.1), row_y + Inches(0.04), total_w, Inches(0.32), total_txt,
+              size=10, bold=True, color=COLORS["white"])
 
-    add_text(slide, Inches(2.6), panel_top + Inches(0.5), Inches(3.4), Inches(0.25), "Scoring Model", size=12, bold=True)
-    sw = CONFIG["score_weights"]
-    caps = CONFIG["score_caps"]
-    buckets = " / ".join(CONFIG["age_bucket_labels"])
-    scoring_lines = (
-        f'Points per open case (by age):\n'
-        f'Age:  {buckets}\n'
-        f'P1 Critical:  {" / ".join(str(x) for x in sw["P1"])}\n'
-        f'P2 High:  {" / ".join(str(x) for x in sw["P2"])}\n'
-        f'P3 Moderate:  {" / ".join(str(x) for x in sw["P3"])}  (cap {caps["P3"]})\n'
-        f'P4 Low:  {" / ".join(str(x) for x in sw["P4"])}  (cap {caps["P4"]})\n'
-        f'Score = 100 - P1 - P2 - P3 - P4'
-    )
-    add_text(slide, Inches(2.6), panel_top + Inches(0.85), Inches(3.7), Inches(1.5), scoring_lines, size=9.5)
-
-    add_text(slide, Inches(6.4), panel_top + Inches(0.5), Inches(3.6), Inches(0.25), "Today's Drivers", size=12, bold=True)
-    driver_lines = "\n".join(f"- {d}" for d in m["drivers"])
-    driver_lines += f'\nScore: {CONFIG["attention_start"]} - {m["total_deduction"]} = {m["score"]}'
-    add_text(slide, Inches(6.4), panel_top + Inches(0.85), Inches(3.7), Inches(1.1), driver_lines, size=10.5)
-
-    # "Excluded from Score" note sits below Today's Drivers
-    add_text(slide, Inches(6.4), panel_top + Inches(1.95), Inches(3.6), Inches(0.25), "Excluded from Score", size=11, bold=True)
-    add_text(slide, Inches(6.4), panel_top + Inches(2.25), Inches(3.7), Inches(0.6),
+    # "Excluded from Score" note sits below the drivers row
+    add_text(slide, Inches(0.5), panel_top + Inches(1.45), Inches(6), Inches(0.25), "Excluded from Score", size=11, bold=True)
+    add_text(slide, Inches(0.5), panel_top + Inches(1.72), Inches(12), Inches(0.3),
               f'{m["rca_pending"]} Pending RCA case(s) are parked awaiting root-cause analysis and are listed separately on the next page.',
               size=10, color=COLORS["text_muted"])
 

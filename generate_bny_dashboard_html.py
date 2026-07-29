@@ -250,36 +250,15 @@ def themes_html(m):
 
 
 def scoring_html(m):
-    sw = CONFIG["score_weights"]
-    caps = CONFIG["score_caps"]
-    buckets = " / ".join(CONFIG["age_bucket_labels"])
-    model = [
-        "Points per open case, by age:",
-        f"Age: {esc(buckets)}",
-        f'P1 Critical: {" / ".join(str(x) for x in sw["P1"])}',
-        f'P2 High: {" / ".join(str(x) for x in sw["P2"])}',
-        f'P3 Moderate: {" / ".join(str(x) for x in sw["P3"])} (cap {caps["P3"]})',
-        f'P4 Low: {" / ".join(str(x) for x in sw["P4"])} (cap {caps["P4"]})',
-        "Score = 100 &minus; P1 &minus; P2 &minus; P3 &minus; P4",
-    ]
-    model_html = "<br>".join(model)
-    drivers_html = "<br>".join(f"&bull; {esc(d)}" for d in m["drivers"])
-    drivers_html += f'<br><strong>Score: {CONFIG["attention_start"]} &minus; {m["total_deduction"]} = {m["score"]}</strong>'
-    band_hex = BAND_HEX[m["band"]]
+    driver_items = "".join(f'<div class="driver-item">{esc(d)}</div>' for d in m["drivers"])
+    driver_items += (
+        f'<div class="driver-item total">Score: {CONFIG["attention_start"]} '
+        f'&minus; {m["total_deduction"]} = {m["score"]} &middot; {m["band"]}</div>'
+    )
     return f"""
     <div class="score-panel">
-      <div class="score-circle" style="background:{band_hex}">
-        <div class="score-num">{m['score']}</div>
-        <div class="score-band">{m['band']}</div>
-      </div>
-      <div class="score-col">
-        <div class="score-h">Scoring Model</div>
-        <div class="score-body">{model_html}</div>
-      </div>
-      <div class="score-col">
-        <div class="score-h">Today's Drivers</div>
-        <div class="score-body">{drivers_html}</div>
-      </div>
+      <div class="score-h">Today's Drivers</div>
+      <div class="drivers-row">{driver_items}</div>
     </div>
     """
 
@@ -410,14 +389,11 @@ def build_html(m):
   .charts {{ display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:20px; }}
   .chart-card {{ border:1px solid var(--border); border-radius:8px; padding:12px 14px; }}
   .chart-note {{ font-size:.68rem; color:var(--muted); margin-top:4px; }}
-  .score-panel {{ display:grid; grid-template-columns:180px 1fr 1fr; gap:20px; border:1px solid var(--border); border-radius:8px; padding:18px 20px; align-items:start; }}
-  .score-circle {{ width:150px; height:150px; border-radius:50%; color:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; }}
-  .score-num {{ font-size:3rem; font-weight:800; line-height:1; }}
-  .score-band {{ font-size:.9rem; font-weight:700; margin-top:4px; }}
-  .score-h {{ font-size:.9rem; font-weight:700; margin-bottom:8px; }}
-  .score-body {{ font-size:.8rem; line-height:1.7; color:var(--text); }}
-  .band {{ display:flex; align-items:center; gap:8px; margin-bottom:6px; }}
-  .swatch {{ width:16px; height:14px; border-radius:3px; display:inline-block; }}
+  .score-panel {{ border:1px solid var(--border); border-radius:8px; padding:16px 20px; }}
+  .score-h {{ font-size:.9rem; font-weight:700; margin-bottom:10px; }}
+  .drivers-row {{ display:flex; flex-wrap:wrap; gap:12px; align-items:center; }}
+  .driver-item {{ background:#f8fafc; border:1px solid var(--border); border-radius:6px; padding:8px 14px; font-size:.85rem; font-weight:600; color:var(--text); white-space:nowrap; }}
+  .driver-item.total {{ background:#fff7ed; border-color:var(--amber); color:#b45309; font-weight:800; }}
   .footer-note {{ font-size:.68rem; color:var(--muted); padding:6px 28px 20px; }}
   .appendix-grid {{ display:grid; grid-template-columns:1fr 1fr; gap:28px; align-items:start; }}
   .final-calc {{ margin-top:16px; font-size:1rem; font-weight:700; }}
