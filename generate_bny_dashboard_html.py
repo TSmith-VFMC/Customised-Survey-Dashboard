@@ -66,9 +66,25 @@ def svg_line_chart(week_labels, series_p1, series_p2, cap):
         gy = y(gv)
         parts.append(f'<line x1="{pad_l}" y1="{gy:.1f}" x2="{w - pad_r}" y2="{gy:.1f}" stroke="#e6e6e6" stroke-width="1"/>')
         parts.append(f'<text x="{pad_l - 8}" y="{gy + 4:.1f}" font-size="10" fill="#5b6370" text-anchor="end">{gv:.0f}</text>')
-    # x labels
+    # x labels (may contain a second line, e.g. "Month 1\n1 Jul-28 Jul")
+    n_lbl = len(week_labels)
     for i, lbl in enumerate(week_labels):
-        parts.append(f'<text x="{x(i):.1f}" y="{h - pad_b + 18}" font-size="10" fill="#5b6370" text-anchor="middle">{esc(lbl)}</text>')
+        lines = str(lbl).split("\n")
+        xi = x(i)
+        # Keep edge labels inside the viewBox so the date range isn't clipped.
+        if i == 0:
+            anchor = "start"
+        elif i == n_lbl - 1:
+            anchor = "end"
+        else:
+            anchor = "middle"
+        for li, line in enumerate(lines):
+            weight = "600" if li == 0 else "400"
+            fill = "#1f2937" if li == 0 else "#8a929e"
+            parts.append(
+                f'<text x="{xi:.1f}" y="{h - pad_b + 16 + li * 12}" font-size="10" '
+                f'font-weight="{weight}" fill="{fill}" text-anchor="{anchor}">{esc(line)}</text>'
+            )
 
     def polyline(series, color):
         pts = " ".join(f"{x(i):.1f},{y(v):.1f}" for i, v in enumerate(series))

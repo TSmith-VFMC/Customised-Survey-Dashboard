@@ -340,7 +340,11 @@ def compute_metrics(df, asof):
             last_p2 = v2
         mttr_p1.append(v1 if v1 is not None else 0)
         mttr_p2.append(v2 if v2 is not None else 0)
-        week_labels.append(f"Month {months - m_i + 1}")
+        # Two-line label: "Month N" plus the inclusive date range of the block,
+        # so readers can see exactly which closures each point covers.
+        range_start = w_end - pd.Timedelta(days=month_days - 1)
+        date_range = f"{range_start.day} {range_start:%b}\u2013{w_end.day} {w_end:%b}"
+        week_labels.append(f"Month {months - m_i + 1}\n{date_range}")
 
     open_by_priority = {
         p: int((active_df["PriorityCode"] == p).sum()) for p in ["P1", "P2", "P3", "P4"]
