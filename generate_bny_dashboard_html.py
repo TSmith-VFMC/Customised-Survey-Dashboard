@@ -449,9 +449,9 @@ def build_html(m):
     <div class="body">
       <div class="charts">
         <div class="chart-card">
-          <div class="section-title">Mean Time to Resolution &ndash; P1 &amp; P2 (last {CONFIG["mttr_weeks"]} weeks, days)</div>
+          <div class="section-title">Mean Time to Resolution &ndash; P1 &amp; P2 (last {CONFIG["mttr_months"]} months, days)</div>
           {line}
-          <div class="chart-note">Weekly median; capped at {CONFIG["mttr_outlier_cap_days"]}d so a single legacy backlog closure does not distort the trend.</div>
+          <div class="chart-note">Monthly median (4-week blocks); capped at {CONFIG["mttr_outlier_cap_days"]}d so a single legacy backlog closure does not distort the trend.</div>
         </div>
         <div class="chart-card">
           <div class="section-title">Open Cases by Priority (as at {asof_str})</div>

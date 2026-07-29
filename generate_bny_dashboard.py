@@ -78,8 +78,9 @@ CONFIG = {
     "rag_bands": [(80, 100, "GREEN"), (50, 79, "AMBER"), (0, 49, "RED")],
     "repeat_theme_min_occurrences": 3,
     "repeat_theme_top_n": 4,
-    "mttr_weeks": 8,
-    "mttr_outlier_cap_days": 45,  # cap for trend chart legibility; low P1/P2 weekly
+    "mttr_months": 3,          # trend shows the last 3 months...
+    "mttr_month_days": 28,     # ...each a 4-week block (3 x 28d = 12 weeks total)
+    "mttr_outlier_cap_days": 45,  # cap for trend chart legibility; low P1/P2
                                    # volume means a single very old backlog closure
                                    # can otherwise dominate a week's median
 }
@@ -309,21 +310,25 @@ def compute_metrics(df, asof):
         _rag_rank=rca_df["RAG"].map(rag_rank),
     ).sort_values(by=["_priority_rank", "_rag_rank", "Days Open"], ascending=[True, True, False])
 
-    # ---- MTTR trend (last N weeks) for P1 & P2 ----
-    # Uses the median (not mean) resolution time per week - a handful of very
+    # ---- MTTR trend (last N months) for P1 & P2 ----
+    # Uses the median (not mean) resolution time per month - a handful of very
     # old tickets that were finally closed can otherwise create huge, misleading
-    # spikes in a small weekly sample.
-    weeks = CONFIG["mttr_weeks"]
+    # spikes in a small sample. Each "month" is a 4-week block anchored on the
+    # file's as-of date (3 x 28d = last 12 weeks).
+    months = CONFIG["mttr_months"]
+    month_days = CONFIG["mttr_month_days"]
     mttr_p1, mttr_p2, week_labels = [], [], []
     # Only genuinely resolved cases count towards MTTR - open cases (In Progress,
     # Escalation, Awaiting Info, etc.) must not be treated as "resolved".
+    # NOTE: no dedicated resolved-date field exists in the export, so closure is
+    # approximated by the Updated date on cases in a closed state.
     resolved = df[df["State"].isin(closed_states)].dropna(subset=["Opened_dt", "Updated_dt"]).copy()
     resolved["ResolutionDays"] = (resolved["Updated_dt"] - resolved["Opened_dt"]).dt.total_seconds() / 86400
     resolved["ResolutionDays"] = resolved["ResolutionDays"].clip(upper=CONFIG["mttr_outlier_cap_days"])
     last_p1, last_p2 = None, None
-    for w_i in range(weeks, 0, -1):
-        w_end = asof - pd.Timedelta(days=(w_i - 1) * 7)
-        w_start = w_end - pd.Timedelta(days=7)
+    for m_i in range(months, 0, -1):
+        w_end = asof - pd.Timedelta(days=(m_i - 1) * month_days)
+        w_start = w_end - pd.Timedelta(days=month_days)
         window = resolved[(resolved["Updated_dt"] > w_start) & (resolved["Updated_dt"] <= w_end)]
         p1_vals = window[window["Priority"] == "Critical"]["ResolutionDays"]
         p2_vals = window[window["Priority"] == "High"]["ResolutionDays"]
@@ -335,7 +340,7 @@ def compute_metrics(df, asof):
             last_p2 = v2
         mttr_p1.append(v1 if v1 is not None else 0)
         mttr_p2.append(v2 if v2 is not None else 0)
-        week_labels.append(f"W{weeks - w_i + 1}")
+        week_labels.append(f"Month {months - m_i + 1}")
 
     open_by_priority = {
         p: int((active_df["PriorityCode"] == p).sum()) for p in ["P1", "P2", "P3", "P4"]
@@ -589,9 +594,9 @@ def build_slide2(prs, m):
 
     # ---- Chart 1: MTTR trend ----
     add_text(slide, Inches(0.3), Inches(0.85), Inches(6.2), Inches(0.3),
-              f'Mean Time to Resolution - P1 & P2 (last {CONFIG["mttr_weeks"]} weeks, days)', size=13, bold=True)
+              f'Mean Time to Resolution - P1 & P2 (last {CONFIG["mttr_months"]} months, days)', size=13, bold=True)
     add_text(slide, Inches(0.3), Inches(4.65), Inches(6.2), Inches(0.25),
-              f'Weekly median; capped at {CONFIG["mttr_outlier_cap_days"]}d so a single legacy backlog closure does not distort the trend.',
+              f'Monthly median (4-week blocks); capped at {CONFIG["mttr_outlier_cap_days"]}d so a single legacy backlog closure does not distort the trend.',
               size=8, color=COLORS["text_muted"])
     chart_data = CategoryChartData()
     chart_data.categories = m["week_labels"]
