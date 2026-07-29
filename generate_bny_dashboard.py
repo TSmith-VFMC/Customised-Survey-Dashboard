@@ -315,7 +315,9 @@ def compute_metrics(df, asof):
     # spikes in a small weekly sample.
     weeks = CONFIG["mttr_weeks"]
     mttr_p1, mttr_p2, week_labels = [], [], []
-    resolved = df.dropna(subset=["Opened_dt", "Updated_dt"]).copy()
+    # Only genuinely resolved cases count towards MTTR - open cases (In Progress,
+    # Escalation, Awaiting Info, etc.) must not be treated as "resolved".
+    resolved = df[df["State"].isin(closed_states)].dropna(subset=["Opened_dt", "Updated_dt"]).copy()
     resolved["ResolutionDays"] = (resolved["Updated_dt"] - resolved["Opened_dt"]).dt.total_seconds() / 86400
     resolved["ResolutionDays"] = resolved["ResolutionDays"].clip(upper=CONFIG["mttr_outlier_cap_days"])
     last_p1, last_p2 = None, None
@@ -679,15 +681,6 @@ def build_slide2(prs, m):
     add_text(slide, Inches(6.4), panel_top + Inches(2.25), Inches(3.7), Inches(0.6),
               f'{m["rca_pending"]} Pending RCA case(s) are parked awaiting root-cause analysis and are listed separately on the next page.',
               size=10, color=COLORS["text_muted"])
-
-    # RAG bands sit in the third column, right of Today's Drivers, as a vertical list
-    add_text(slide, Inches(10.4), panel_top + Inches(0.5), Inches(2.5), Inches(0.25), "RAG Bands", size=12, bold=True)
-    band_defs = [("Green 80-100", COLORS["green"]), ("Amber 50-79", COLORS["amber"]), ("Red < 50", COLORS["red"])]
-    by = panel_top + Inches(0.9)
-    for label, color in band_defs:
-        add_rect(slide, Inches(10.4), by, Inches(0.3), Inches(0.28), fill=color)
-        add_text(slide, Inches(10.75), by - Inches(0.02), Inches(2.0), Inches(0.3), label, size=10)
-        by = by + Inches(0.4)
 
 
 def build_slide3(prs, m):

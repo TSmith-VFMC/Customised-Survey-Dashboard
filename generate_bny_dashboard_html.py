@@ -249,11 +249,6 @@ def scoring_html(m):
     model_html = "<br>".join(model)
     drivers_html = "<br>".join(f"&bull; {esc(d)}" for d in m["drivers"])
     drivers_html += f'<br><strong>Score: {CONFIG["attention_start"]} &minus; {m["total_deduction"]} = {m["score"]}</strong>'
-    bands = [("Green  80 - 100", "#16a34a"), ("Amber  50 - 79", "#f59e0b"), ("Red  &lt; 50", "#dc2626")]
-    bands_html = "".join(
-        f"<div class='band'><span class='swatch' style='background:{c}'></span>{b}</div>"
-        for b, c in bands
-    )
     band_hex = BAND_HEX[m["band"]]
     return f"""
     <div class="score-panel">
@@ -268,10 +263,6 @@ def scoring_html(m):
       <div class="score-col">
         <div class="score-h">Today's Drivers</div>
         <div class="score-body">{drivers_html}</div>
-      </div>
-      <div class="score-col">
-        <div class="score-h">RAG Bands</div>
-        <div class="score-body">{bands_html}</div>
       </div>
     </div>
     """
@@ -403,7 +394,7 @@ def build_html(m):
   .charts {{ display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:20px; }}
   .chart-card {{ border:1px solid var(--border); border-radius:8px; padding:12px 14px; }}
   .chart-note {{ font-size:.68rem; color:var(--muted); margin-top:4px; }}
-  .score-panel {{ display:grid; grid-template-columns:180px 1fr 1fr 1fr; gap:20px; border:1px solid var(--border); border-radius:8px; padding:18px 20px; align-items:start; }}
+  .score-panel {{ display:grid; grid-template-columns:180px 1fr 1fr; gap:20px; border:1px solid var(--border); border-radius:8px; padding:18px 20px; align-items:start; }}
   .score-circle {{ width:150px; height:150px; border-radius:50%; color:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; }}
   .score-num {{ font-size:3rem; font-weight:800; line-height:1; }}
   .score-band {{ font-size:.9rem; font-weight:700; margin-top:4px; }}
