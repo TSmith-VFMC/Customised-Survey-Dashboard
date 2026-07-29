@@ -392,7 +392,7 @@ def build_html(m):
   .score-panel {{ border:1px solid var(--border); border-radius:8px; padding:16px 20px; }}
   .score-h {{ font-size:.9rem; font-weight:700; margin-bottom:10px; }}
   .drivers-row {{ display:flex; flex-wrap:wrap; gap:12px; align-items:center; }}
-  .driver-item {{ background:#f8fafc; border:1px solid var(--border); border-radius:6px; padding:8px 14px; font-size:.85rem; font-weight:600; color:var(--text); white-space:nowrap; }}
+  .driver-item {{ background:#f8fafc; border:1px solid var(--border); border-radius:6px; padding:6px 11px; font-size:.72rem; font-weight:600; color:var(--text); white-space:nowrap; }}
   .driver-item.total {{ background:#fff7ed; border-color:var(--amber); color:#b45309; font-weight:800; }}
   .footer-note {{ font-size:.68rem; color:var(--muted); padding:6px 28px 20px; }}
   .appendix-grid {{ display:grid; grid-template-columns:1fr 1fr; gap:28px; align-items:start; }}
@@ -456,9 +456,6 @@ def build_html(m):
       <div class="section-title" style="margin-top:22px">Pending RCA &ndash; Root Cause Analysis in Progress ({m['rca_pending']})</div>
       <div class="chart-note" style="margin-bottom:8px">These open cases are parked awaiting root-cause analysis and are excluded from the Management Attention Score, KPIs, risk matrix and Executive Watchlist.</div>
       {rca_table_html(m)}
-    </div>
-    <div class="footer-note">
-      Repeat Incident Themes are auto-detected from recurring Subject text. The Management Attention Score is derived solely from open case priority and age (see Appendix). Review before external distribution.
     </div>
   </div>
 
