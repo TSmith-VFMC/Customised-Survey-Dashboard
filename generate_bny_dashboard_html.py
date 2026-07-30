@@ -340,7 +340,7 @@ def appendix_html(m):
           <div class="chart-note" style="margin-top:14px">
             <strong>Definitions:</strong> "Open" = any case not in state Closed / Resolved / Cancelled.
             Priority mapping: Critical&rarr;P1, High&rarr;P2, Moderate&rarr;P3, Low&rarr;P4.
-            Repeat Incident Themes are auto-detected from recurring Subject patterns and are informational (they do not affect this score).
+            Repeat Incident Themes are derived by text-pattern matching on the Subject field (recurring identifiers/phrases appearing 3+ times) &ndash; not a case category field &ndash; and are informational (they do not affect this score).
           </div>
         </div>
       </div>
