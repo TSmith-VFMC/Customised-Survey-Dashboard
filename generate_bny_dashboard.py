@@ -293,6 +293,7 @@ def compute_metrics(df, asof):
         (watch["Days Open"] > 30)
         | (watch["State"] == "Escalation")
         | (watch["PriorityCode"] == "P1")
+        | (watch["RAG"] == "R")
     )
     watch_pool = watch[watch["Eligible"]] if watch["Eligible"].any() else watch
     watch_pool = watch_pool.assign(
@@ -520,15 +521,16 @@ def build_slide1(prs, m):
     add_text(slide, wl_left, wl_top, wl_w, Inches(0.25), "Executive Watchlist - Top 5", size=13, bold=True)
 
     wl_rows = 6
-    wl_tbl_shape = slide.shapes.add_table(wl_rows, 6, wl_left, wl_top + Inches(0.3), wl_w, Inches(1.9))
+    wl_tbl_shape = slide.shapes.add_table(wl_rows, 7, wl_left, wl_top + Inches(0.3), wl_w, Inches(1.9))
     wl_table = wl_tbl_shape.table
     wl_table.columns[0].width = Inches(1.0)
     wl_table.columns[1].width = Inches(0.8)
     wl_table.columns[2].width = Inches(0.6)
     wl_table.columns[3].width = Inches(0.6)
-    wl_table.columns[4].width = Inches(4.9)
+    wl_table.columns[4].width = Inches(3.9)
     wl_table.columns[5].width = Inches(1.0)
-    wl_headers = ["Case", "Priority", "Days", "RAG", "Issue Summary", "Escalated?"]
+    wl_table.columns[6].width = Inches(1.0)
+    wl_headers = ["Case", "Priority", "Days", "RAG", "Issue Summary", "Case Type", "Escalated?"]
     for c, h in enumerate(wl_headers):
         set_table_cell(wl_table, 0, c, h, size=9, bold=True, fill=COLORS["grey_bg"])
 
@@ -544,9 +546,10 @@ def build_slide1(prs, m):
                             color=COLORS["white"], fill=RAG_FILL[rag], align=PP_ALIGN.CENTER)
             subj = str(row["Subject"])
             set_table_cell(wl_table, ri + 1, 4, subj[:95] + ("..." if len(subj) > 95 else ""), size=9)
-            set_table_cell(wl_table, ri + 1, 5, "Y" if row["State"] == "Escalation" else "N", size=9, align=PP_ALIGN.CENTER)
+            set_table_cell(wl_table, ri + 1, 5, str(row.get("Case Type", "") or ""), size=9)
+            set_table_cell(wl_table, ri + 1, 6, "Y" if row["State"] == "Escalation" else "N", size=9, align=PP_ALIGN.CENTER)
         else:
-            for c in range(6):
+            for c in range(7):
                 set_table_cell(wl_table, ri + 1, c, "", size=9)
 
     # ---- Repeat Incident Themes callout ----
@@ -683,15 +686,16 @@ def build_slide3(prs, m):
 
     rows = max(1, n) + 1
     tbl_h = Inches(min(5.8, 0.4 * rows))
-    tbl_shape = slide.shapes.add_table(rows, 6, Inches(0.3), Inches(1.35), Inches(12.7), tbl_h)
+    tbl_shape = slide.shapes.add_table(rows, 7, Inches(0.3), Inches(1.35), Inches(12.7), tbl_h)
     table = tbl_shape.table
     table.columns[0].width = Inches(1.3)
     table.columns[1].width = Inches(1.1)
     table.columns[2].width = Inches(0.8)
     table.columns[3].width = Inches(0.8)
-    table.columns[4].width = Inches(7.3)
-    table.columns[5].width = Inches(1.4)
-    headers = ["Case", "Priority", "Days", "RAG", "Issue Summary", "Escalated?"]
+    table.columns[4].width = Inches(6.3)
+    table.columns[5].width = Inches(1.0)
+    table.columns[6].width = Inches(1.4)
+    headers = ["Case", "Priority", "Days", "RAG", "Issue Summary", "Case Type", "Escalated?"]
     for c, h in enumerate(headers):
         set_table_cell(table, 0, c, h, size=10, bold=True, fill=COLORS["grey_bg"])
     if n:
@@ -705,9 +709,10 @@ def build_slide3(prs, m):
                             color=COLORS["white"], fill=RAG_FILL[rag], align=PP_ALIGN.CENTER)
             subj = str(row["Subject"])
             set_table_cell(table, ri + 1, 4, subj[:110] + ("..." if len(subj) > 110 else ""), size=9)
-            set_table_cell(table, ri + 1, 5, "Y" if row["State"] == "Escalation" else "N", size=9, align=PP_ALIGN.CENTER)
+            set_table_cell(table, ri + 1, 5, str(row.get("Case Type", "") or ""), size=9)
+            set_table_cell(table, ri + 1, 6, "Y" if row["State"] == "Escalation" else "N", size=9, align=PP_ALIGN.CENTER)
     else:
-        for c in range(6):
+        for c in range(7):
             set_table_cell(table, 1, c, "No Pending RCA cases" if c == 0 else "", size=9)
 
     repo_url = "https://github.com/TSmith-VFMC/Customised-Survey-Dashboard"

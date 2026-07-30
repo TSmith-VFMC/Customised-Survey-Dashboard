@@ -179,6 +179,7 @@ def watchlist_html(m):
         r = top5.iloc[i]
         rag = r["RAG"]
         subj = esc(str(r["Subject"]))
+        case_type = esc(str(r.get("Case Type", "") or ""))
         esc_flag = "Y" if r["State"] == "Escalation" else "N"
         rows.append(
             "<tr>"
@@ -187,12 +188,13 @@ def watchlist_html(m):
             f"<td style='text-align:center'>{r['Days Open']:.0f}</td>"
             f"<td style='text-align:center'><span class='pill' style='background:{RAG_HEX[rag]}'>{r['PriorityCode']}</span></td>"
             f"<td>{subj}</td>"
+            f"<td>{case_type}</td>"
             f"<td style='text-align:center'>{esc_flag}</td>"
             "</tr>"
         )
     return (
         '<table class="data"><thead><tr>'
-        "<th>Case</th><th>Priority</th><th>Days</th><th>RAG</th><th>Issue Summary</th><th>Escalated?</th>"
+        "<th>Case</th><th>Priority</th><th>Days</th><th>RAG</th><th>Issue Summary</th><th>Case Type</th><th>Escalated?</th>"
         "</tr></thead><tbody>" + "".join(rows) + "</tbody></table>"
     )
 
@@ -204,6 +206,7 @@ def rca_table_html(m):
         r = rca.iloc[i]
         rag = r["RAG"]
         subj = esc(str(r["Subject"]))
+        case_type = esc(str(r.get("Case Type", "") or ""))
         esc_flag = "Y" if r["State"] == "Escalation" else "N"
         rows.append(
             "<tr>"
@@ -212,14 +215,15 @@ def rca_table_html(m):
             f"<td style='text-align:center'>{r['Days Open']:.0f}</td>"
             f"<td style='text-align:center'><span class='pill' style='background:{RAG_HEX[rag]}'>{r['PriorityCode']}</span></td>"
             f"<td>{subj}</td>"
+            f"<td>{case_type}</td>"
             f"<td style='text-align:center'>{esc_flag}</td>"
             "</tr>"
         )
     if not rows:
-        rows.append("<tr><td colspan='6'>No Pending RCA cases</td></tr>")
+        rows.append("<tr><td colspan='7'>No Pending RCA cases</td></tr>")
     return (
         '<table class="data"><thead><tr>'
-        "<th>Case</th><th>Priority</th><th>Days</th><th>RAG</th><th>Issue Summary</th><th>Escalated?</th>"
+        "<th>Case</th><th>Priority</th><th>Days</th><th>RAG</th><th>Issue Summary</th><th>Case Type</th><th>Escalated?</th>"
         "</tr></thead><tbody>" + "".join(rows) + "</tbody></table>"
     )
 
