@@ -540,7 +540,7 @@ def build_slide1(prs, m):
             set_table_cell(wl_table, ri + 1, 0, row["Number"], size=9)
             set_table_cell(wl_table, ri + 1, 1, row["Priority"], size=9)
             set_table_cell(wl_table, ri + 1, 2, f'{row["Days Open"]:.0f}', size=9, align=PP_ALIGN.CENTER)
-            set_table_cell(wl_table, ri + 1, 3, RAG_LABEL[rag][0], size=9, bold=True,
+            set_table_cell(wl_table, ri + 1, 3, row["PriorityCode"], size=9, bold=True,
                             color=COLORS["white"], fill=RAG_FILL[rag], align=PP_ALIGN.CENTER)
             subj = str(row["Subject"])
             set_table_cell(wl_table, ri + 1, 4, subj[:95] + ("..." if len(subj) > 95 else ""), size=9)
@@ -701,7 +701,7 @@ def build_slide3(prs, m):
             set_table_cell(table, ri + 1, 0, row["Number"], size=9)
             set_table_cell(table, ri + 1, 1, row["Priority"], size=9)
             set_table_cell(table, ri + 1, 2, f'{row["Days Open"]:.0f}', size=9, align=PP_ALIGN.CENTER)
-            set_table_cell(table, ri + 1, 3, RAG_LABEL[rag][0], size=9, bold=True,
+            set_table_cell(table, ri + 1, 3, row["PriorityCode"], size=9, bold=True,
                             color=COLORS["white"], fill=RAG_FILL[rag], align=PP_ALIGN.CENTER)
             subj = str(row["Subject"])
             set_table_cell(table, ri + 1, 4, subj[:110] + ("..." if len(subj) > 110 else ""), size=9)
