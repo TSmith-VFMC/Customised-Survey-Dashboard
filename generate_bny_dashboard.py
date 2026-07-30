@@ -710,6 +710,11 @@ def build_slide3(prs, m):
         for c in range(6):
             set_table_cell(table, 1, c, "No Pending RCA cases" if c == 0 else "", size=9)
 
+    repo_url = "https://github.com/TSmith-VFMC/Customised-Survey-Dashboard"
+    link_box = add_text(slide, Inches(0.3), H - Inches(0.35), Inches(8), Inches(0.25),
+              f"Source & generator: {repo_url}", size=8, color=COLORS["text_muted"])
+    link_box.text_frame.paragraphs[0].runs[0].hyperlink.address = repo_url
+
 
 # --------------------------------------------------------------------------
 # MAIN

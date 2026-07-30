@@ -468,6 +468,9 @@ def build_html(m):
     <div class="body">
       {appendix_html(m)}
     </div>
+    <div class="footer-note">
+      Source & generator: <a href="https://github.com/TSmith-VFMC/Customised-Survey-Dashboard" target="_blank" rel="noopener">github.com/TSmith-VFMC/Customised-Survey-Dashboard</a>
+    </div>
   </div>
 
 </body>
