@@ -15,3 +15,7 @@ debug.log
 # Local preview / generated artifacts
 _preview.html
 _inspect_*.py
+
+# Automated export - persistent browser session (never contains credentials,
+# but is machine/session-specific and should not be shared)
+.auth/

@@ -133,16 +133,26 @@ New module: `fetch_latest_export.py`
    password only.
 2. Does Eagle/BNY offer an **API token or service account** for this portal? If so,
    it would remove the browser dependency entirely for scheduled runs.
-3. Are there **filters** we should bake into `filterValues` (e.g. environment,
-   customer) rather than exporting everything?
-4. Preferred **cadence** — on demand, or a scheduled Windows Task?
-5. Exact **login-page field selectors** (username / password / submit) — to be
-   captured from the live page during implementation.
+3. ~~Are there **filters** we should bake into `filterValues`~~ **Resolved:** keep
+   exporting everything (`filterValues={}`), matching current manual behavior.
+4. ~~Preferred **cadence**~~ **Resolved:** on-demand now via `Run_BNY_Dashboard.bat`;
+   a scheduled Windows Task is planned as a follow-up (step 4 of rollout, below).
+5. ~~Exact **login-page field selectors**~~ **Resolved:** the portal login is a
+   PingFederate SSO page (`myeagleapps.eagleinvsys.com/idp/startSSO.ping`) with a
+   plain form — `#username` (the user's VFMC email, e.g. `tsmith@vfmc.vic.gov.au`),
+   `#password`, and a `a.ping-button.allow` "Sign On" link that submits the form.
 
 ## 7. Rollout Plan
-1. Build `fetch_latest_export.py` with `--set-credentials` and a headless
-   `fetch_export()` (no changes to existing generators).
-2. Capture the login-page selectors and confirm a clean headless download.
+1. ~~Build `fetch_latest_export.py`~~ **Done** — `--set-credentials` (keyring +
+   getpass) and headless `fetch_export()` implemented; wired into
+   `Run_BNY_Dashboard.bat` before the HTML/PPTX generator calls (non-fatal on
+   failure — falls back to whatever export is already in the source folder).
+2. ~~Capture the login-page selectors~~ **Done** (see Open Question 5).
 3. Manual validation over a few refresh cycles to confirm session longevity.
-4. Add the batch-file wiring, then optionally a scheduled Windows Task.
+   **Next step:** run `python fetch_latest_export.py --set-credentials` once, then
+   `python fetch_latest_export.py --headed` to watch the first login and confirm a
+   clean download. `playwright install chromium` must be run locally first (the
+   sandboxed dev environment used to build this couldn't complete that download
+   due to a TLS interception issue on its network).
+4. Add a scheduled Windows Task once step 3 is confirmed stable.
 5. Revisit the service-account/API-token path as a lower-maintenance long-term option.
