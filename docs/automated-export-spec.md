@@ -148,11 +148,27 @@ New module: `fetch_latest_export.py`
    `Run_BNY_Dashboard.bat` before the HTML/PPTX generator calls (non-fatal on
    failure — falls back to whatever export is already in the source folder).
 2. ~~Capture the login-page selectors~~ **Done** (see Open Question 5).
-3. Manual validation over a few refresh cycles to confirm session longevity.
-   **Next step:** run `python fetch_latest_export.py --set-credentials` once, then
-   `python fetch_latest_export.py --headed` to watch the first login and confirm a
-   clean download. `playwright install chromium` must be run locally first (the
-   sandboxed dev environment used to build this couldn't complete that download
-   due to a TLS interception issue on its network).
+3. ~~Manual validation over a few refresh cycles~~ **Done** — validated
+   end-to-end (headed and headless), producing a valid 15-column, 2500+ row
+   `.xlsx` that the generators picked up correctly. Implementation notes from
+   getting this working, for future maintenance:
+   - Login is a multi-hop SAML redirect; must `page.wait_for_url("**xpclientportal.eagleinvsys.com**")`
+     after clicking Sign On rather than relying on `networkidle`, which can
+     resolve mid-chain.
+   - The export endpoint depends on server-side search state that only gets
+     populated by first loading the real tickets list route
+     (`/SupportCenter/TicketCenter`, not the portal root `/`) — a bare API
+     call without visiting it first returns a 500
+     (`Cannot read property 'field' of undefined`).
+   - `ctx.request.get(EXPORT_URL)` (Playwright's Node-based API client) fails
+     with `Parse Error: Invalid header value char` against this portal's
+     cookie set. Fetching via real browser navigation instead
+     (`page.goto(EXPORT_URL)` wrapped in `page.expect_download()`) works
+     reliably and matches what a real click does. Direct navigation to a
+     download link makes `goto()` reject with a "Download is starting"
+     error even on success — this must be caught and ignored, not treated as
+     a failure.
+   - `filterValues` must be percent-encoded (`%7B%7D`) in the URL, not passed
+     as literal `{}`.
 4. Add a scheduled Windows Task once step 3 is confirmed stable.
 5. Revisit the service-account/API-token path as a lower-maintenance long-term option.
