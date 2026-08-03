@@ -170,5 +170,45 @@ New module: `fetch_latest_export.py`
      a failure.
    - `filterValues` must be percent-encoded (`%7B%7D`) in the URL, not passed
      as literal `{}`.
-4. Add a scheduled Windows Task once step 3 is confirmed stable.
+4. ~~Add a scheduled Windows Task~~ **Done** — Task Scheduler task named
+   **"BNY Executive Dashboard"** runs `Run_BNY_Dashboard.bat` (fetch -> HTML ->
+   PPTX -> PDF -> publish) **Mon-Fri at 7:30am**, logon mode "Interactive only"
+   (runs in the user's session, no stored password; requires the machine to be
+   on and the user logged in at trigger time). To view status/history or
+   change the schedule:
+   - GUI: `Win+R` -> `taskschd.msc` -> Task Scheduler Library -> "BNY Executive
+     Dashboard" (General/Triggers/History tabs).
+   - CLI: `schtasks /query /tn "BNY Executive Dashboard" /fo LIST /v`.
+   - To change only the start time: `schtasks /change /tn "BNY Executive
+     Dashboard" /st HH:MM` (may prompt "Enter the run as password" - safe to
+     press Enter/leave blank since the task is "Interactive only" and stores
+     no password). To change days/recurrence, delete and recreate with
+     `schtasks /create ... /sc weekly /d MON,TUE,WED,THU,FRI /st HH:MM /f`.
 5. Revisit the service-account/API-token path as a lower-maintenance long-term option.
+
+## 8. Stage 2 — Delivery (email / SharePoint)
+
+Goal: get the generated PDF into the hands of stakeholders each morning without
+manual steps, ideally via email.
+
+- **Outlook COM automation** (`send_dashboard_email.py`, uses `pywin32`): built
+  and wired in, but **not usable on this machine** - classic desktop Outlook
+  (`OUTLOOK.EXE`, exposes the `Outlook.Application` COM class) is not
+  installed; only "New Outlook" / web Outlook are available here, and neither
+  supports COM automation. Kept in the repo for if/when classic Outlook is
+  installed - no code changes needed at that point.
+- **Interim solution (current, in production)**: `publish_to_sharepoint.py`
+  copies the latest PDF into the OneDrive desktop-sync folder for
+  `Applications\BNY Services`
+  (`C:\Users\tsmith\OneDrive - VICTORIAN FUNDS MANAGEMENT CORPORATION\Applications\BNY Services`),
+  which syncs automatically to the team SharePoint site. No Graph API/app
+  registration needed - relies entirely on the OneDrive desktop sync client
+  already running. Wired into `Run_BNY_Dashboard.bat` as the last step.
+  A Power Automate flow (trigger: file created in that SharePoint folder) or a
+  "New Outlook" agent is expected to pick the file up from there and send the
+  actual email - that flow is configured directly in Power Automate/Outlook,
+  outside this repo.
+- **Longer-term option**: Microsoft Graph API (`Mail.Send` via an Azure AD app
+  registration) - works headlessly with no Outlook app required, a better fit
+  for an unattended scheduled task than COM automation, but needs a one-time
+  app registration + admin consent. Not yet started.
