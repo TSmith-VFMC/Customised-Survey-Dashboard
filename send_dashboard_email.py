@@ -21,11 +21,12 @@ import win32com.client
 from generate_bny_dashboard import CONFIG
 
 EMAIL_CONFIG = {
+    # Trial: tsmith only for now. Add the rest back once we're comfortable with
+    # the automated send:
+    #   "DA@vfmc.vic.gov.au", "cli@vfmc.vic.gov.au",
+    #   "anorton@vfmc.vic.gov.au", "nanuwar@vfmc.vic.gov.au",
     "to": [
-        "DA@vfmc.vic.gov.au",
-        "cli@vfmc.vic.gov.au",
-        "anorton@vfmc.vic.gov.au",
-        "nanuwar@vfmc.vic.gov.au",
+        "tsmith@vfmc.vic.gov.au",
     ],
     "subject": "TRIAL - BNY Services Daily Start of Day Scorecard - Services cases",
     "body": (
