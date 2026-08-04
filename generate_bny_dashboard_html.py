@@ -135,18 +135,20 @@ def svg_bar_chart(categories, values):
 # --------------------------------------------------------------------------
 def kpi_tiles_html(m):
     band_hex = BAND_HEX[m["band"]]
+    # score and P1 span the full row; aged P2 and backlog share the last row
     tiles = [
-        ("Mgmt Attention Score", f'{m["score"]} &middot; {m["band"]}', band_hex, "#fff"),
+        ("Mgmt Attention Score", f'{m["score"]} &middot; {m["band"]}', band_hex, "#fff", True),
+        ("P1 Incidents", m["p1_open"], "#dc2626" if m["p1_open"] else "#fff", "#fff" if m["p1_open"] else "#1f2937", True),
+        ("Aged High Priority (P2)", m["aged_p2"], "#f59e0b" if m["aged_p2"] else "#fff", "#fff" if m["aged_p2"] else "#1f2937", False),
+        ("Backlog (Open Cases)", m["backlog"], "#fff", "#1f2937", False),
     ]
-    tiles.append(("P1 Incidents", m["p1_open"], "#dc2626" if m["p1_open"] else "#fff", "#fff" if m["p1_open"] else "#1f2937"))
-    tiles.append(("Aged High Priority (P2)", m["aged_p2"], "#f59e0b" if m["aged_p2"] else "#fff", "#fff" if m["aged_p2"] else "#1f2937"))
-    tiles.append(("Backlog (Open Cases)", m["backlog"], "#fff", "#1f2937"))
 
     cells = []
-    for label, value, bg, fg in tiles:
+    for label, value, bg, fg, full_span in tiles:
         border = "border:1px solid #e6e6e6;" if bg == "#fff" else ""
+        span = "grid-column:1 / -1;" if full_span else ""
         cells.append(
-            f'<div class="kpi" style="background:{bg};color:{fg};{border}">'
+            f'<div class="kpi" style="background:{bg};color:{fg};{border}{span}">'
             f'<div class="kpi-label">{esc(label)}</div>'
             f'<div class="kpi-value">{value}</div></div>'
         )
@@ -180,6 +182,8 @@ def watchlist_html(m):
         rag = r["RAG"]
         subj = esc(str(r["Subject"]))
         case_type = esc(str(r.get("Case Type", "") or ""))
+        state = esc(str(r.get("State", "") or ""))
+        submitted_by = esc(str(r.get("Submitted By", "") or ""))
         esc_flag = "Y" if r["State"] == "Escalation" else "N"
         rows.append(
             "<tr>"
@@ -189,12 +193,14 @@ def watchlist_html(m):
             f"<td style='text-align:center'><span class='pill' style='background:{RAG_HEX[rag]}'>{r['PriorityCode']}</span></td>"
             f"<td>{subj}</td>"
             f"<td>{case_type}</td>"
+            f"<td>{state}</td>"
+            f"<td>{submitted_by}</td>"
             f"<td style='text-align:center'>{esc_flag}</td>"
             "</tr>"
         )
     return (
-        '<table class="data"><thead><tr>'
-        "<th>Case</th><th>Priority</th><th>Days</th><th>RAG</th><th>Issue Summary</th><th>Case Type</th><th>Escalated?</th>"
+        '<table class="data watchlist"><thead><tr>'
+        "<th>Case</th><th>Priority</th><th>Days</th><th>RAG</th><th>Issue Summary</th><th>Case Type</th><th>State</th><th>Submitted By</th><th>Esc?</th>"
         "</tr></thead><tbody>" + "".join(rows) + "</tbody></table>"
     )
 
@@ -374,22 +380,35 @@ def build_html(m):
   .header {{ background:var(--navy); color:#fff; padding:16px 28px; }}
   .header h1 {{ font-size:1.35rem; font-weight:700; }}
   .header .sub {{ font-size:.8rem; color:#c7d2e0; margin-top:2px; }}
-  .body {{ padding:20px 28px 28px; }}
-  .kpi-row {{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:24px; }}
-  .kpi {{ border-radius:8px; padding:12px 14px; min-height:78px; display:flex; flex-direction:column; justify-content:space-between; }}
-  .kpi-label {{ font-size:.72rem; font-weight:700; opacity:.95; }}
-  .kpi-value {{ font-size:1.5rem; font-weight:800; }}
-  .grid2 {{ display:grid; grid-template-columns:340px 1fr; gap:24px; margin-bottom:22px; }}
-  .section-title {{ font-size:.95rem; font-weight:700; margin-bottom:10px; }}
+  .body {{ padding:16px 28px 20px; }}
+  .kpi-row {{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }}
+  .kpi {{ border-radius:8px; padding:7px 12px; min-height:48px; display:flex; flex-direction:column; justify-content:space-between; }}
+  .kpi-label {{ font-size:.68rem; font-weight:700; opacity:.95; }}
+  .kpi-value {{ font-size:1.2rem; font-weight:800; }}
+  .grid2 {{ display:grid; grid-template-columns:auto 1fr; gap:24px; margin-bottom:12px; align-items:start; }}
+  .risk-matrix-block {{ max-width:420px; margin-bottom:0; }}
+  .watchlist-block {{ margin-bottom:12px; }}
+  .section-title {{ font-size:.95rem; font-weight:700; margin-bottom:6px; }}
   table {{ border-collapse:collapse; width:100%; font-size:.78rem; }}
-  table.matrix td, table.matrix th {{ border:1px solid var(--border); padding:8px 6px; }}
+  table.matrix td, table.matrix th {{ border:1px solid var(--border); padding:6px 6px; }}
   table.matrix th {{ background:#f5f5f5; font-weight:700; text-align:center; }}
   table.matrix .rowhead {{ font-weight:700; text-align:center; background:#fff; }}
-  table.data th, table.data td {{ border:1px solid var(--border); padding:7px 9px; text-align:left; vertical-align:middle; }}
+  table.data th, table.data td {{ border:1px solid var(--border); padding:6px 8px; text-align:left; vertical-align:middle; }}
   table.data th {{ background:#f5f5f5; font-weight:700; }}
+  table.watchlist {{ table-layout:fixed; font-size:.74rem; }}
+  table.watchlist th, table.watchlist td {{ padding:5px 7px; word-wrap:break-word; overflow-wrap:break-word; }}
+  table.watchlist th:nth-child(1), table.watchlist td:nth-child(1) {{ width:10%; }}
+  table.watchlist th:nth-child(2), table.watchlist td:nth-child(2) {{ width:9%; }}
+  table.watchlist th:nth-child(3), table.watchlist td:nth-child(3) {{ width:5%; }}
+  table.watchlist th:nth-child(4), table.watchlist td:nth-child(4) {{ width:5%; }}
+  table.watchlist th:nth-child(5), table.watchlist td:nth-child(5) {{ width:27%; }}
+  table.watchlist th:nth-child(6), table.watchlist td:nth-child(6) {{ width:15%; }}
+  table.watchlist th:nth-child(7), table.watchlist td:nth-child(7) {{ width:12%; }}
+  table.watchlist th:nth-child(8), table.watchlist td:nth-child(8) {{ width:12%; }}
+  table.watchlist th:nth-child(9), table.watchlist td:nth-child(9) {{ width:5%; }}
   .pill {{ display:inline-block; min-width:20px; padding:2px 7px; border-radius:9999px; color:#fff; font-weight:700; font-size:.72rem; }}
-  .callout {{ margin:8px 0 10px; font-size:.9rem; font-weight:700; color:#b45309; }}
-  .driver-strip {{ margin-top:14px; font-size:.78rem; color:var(--muted); padding:10px 12px; background:#f8fafc; border-left:3px solid var(--amber); border-radius:4px; }}
+  .callout {{ margin:6px 0 8px; font-size:.9rem; font-weight:700; color:#b45309; }}
+  .driver-strip {{ margin-top:10px; font-size:.78rem; color:var(--muted); padding:8px 12px; background:#f8fafc; border-left:3px solid var(--amber); border-radius:4px; }}
   .charts {{ display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:20px; }}
   .chart-card {{ border:1px solid var(--border); border-radius:8px; padding:12px 14px; }}
   .chart-note {{ font-size:.68rem; color:var(--muted); margin-top:4px; }}
@@ -419,16 +438,18 @@ def build_html(m):
       <div class="sub">Point-in-time daily view | As at {asof_str}</div>
     </div>
     <div class="body">
-      {kpi_tiles_html(m)}
       <div class="grid2">
-        <div>
+        <div class="risk-matrix-block">
           <div class="section-title">Priority &times; Age Risk Matrix</div>
           {risk_matrix_html(m)}
         </div>
         <div>
-          <div class="section-title">Executive Watchlist &ndash; Top 5</div>
-          {watchlist_html(m)}
+          {kpi_tiles_html(m)}
         </div>
+      </div>
+      <div class="watchlist-block">
+        <div class="section-title">Executive Watchlist &ndash; Top 5</div>
+        {watchlist_html(m)}
       </div>
       <div class="callout">&#9888; Repeat Incident Themes (systemic patterns requiring root-cause action, not just ticket closure)</div>
       {themes_html(m)}
