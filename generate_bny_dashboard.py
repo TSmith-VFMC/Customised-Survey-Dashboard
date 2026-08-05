@@ -61,6 +61,10 @@ CONFIG = {
         "P4": ["G", "G", "G", "A"],
     },
     "aged_high_priority_days": 5,       # P2 aged threshold used for KPI + scoring
+    # States on this list are on the client's side to action (e.g. awaiting
+    # information from them), so they are excluded from the score deduction -
+    # they still count as open cases everywhere else (KPIs, risk matrix, watchlist).
+    "zero_score_states": {"Awaiting Info"},
     # Overall scorecard: 100 = perfect. Each open case deducts points based on
     # its priority and how long it has been open (age bucket), per the weight
     # matrix below. P3/P4 contributions are each capped so a large low-priority
@@ -248,7 +252,7 @@ def compute_metrics(df, asof):
     themes, repeat_open_cases = detect_repeat_themes(df, set(open_df.index))
     repeat_incidents = int(len(repeat_open_cases))
 
-    # ---- Priority x Age matrix counts (active cases; drive the scorecard) ----
+    # ---- Priority x Age matrix counts (active cases; drive the risk matrix display) ----
     matrix_counts = {}
     for p in ["P1", "P2", "P3", "P4"]:
         row_counts = []
@@ -257,16 +261,28 @@ def compute_metrics(df, asof):
             row_counts.append(cnt)
         matrix_counts[p] = row_counts
 
+    # ---- Same matrix, but excluding cases in a zero-score state (e.g. Awaiting
+    # Info) - this is what actually drives the scorecard deduction below. ----
+    scoreable_df = active_df[~active_df["State"].isin(CONFIG["zero_score_states"])]
+    score_matrix_counts = {}
+    for p in ["P1", "P2", "P3", "P4"]:
+        row_counts = []
+        for bucket_i in range(len(CONFIG["age_buckets"])):
+            cnt = int(((scoreable_df["PriorityCode"] == p) & (scoreable_df["AgeBucket"] == bucket_i)).sum())
+            row_counts.append(cnt)
+        score_matrix_counts[p] = row_counts
+
     # ---- Management Attention Score (weighted Priority x Age model) ----
     # 100 = perfect. Each open case deducts CONFIG["score_weights"][priority][age
-    # bucket] points; P3/P4 totals are capped per CONFIG["score_caps"].
+    # bucket] points; P3/P4 totals are capped per CONFIG["score_caps"]. Cases in
+    # a zero-score state (see CONFIG["zero_score_states"]) deduct 0 points.
     #   Score = 100 - SUM(P1) - SUM(P2) - min(SUM(P3), cap) - min(SUM(P4), cap)
     priority_names = {"P1": "P1 Critical", "P2": "P2 High", "P3": "P3 Moderate", "P4": "P4 Low"}
     score_breakdown = {}
     total_deduction = 0
     for p in ["P1", "P2", "P3", "P4"]:
         weights = CONFIG["score_weights"][p]
-        counts = matrix_counts[p]
+        counts = score_matrix_counts[p]
         raw = sum(wt * ct for wt, ct in zip(weights, counts))
         cap = CONFIG["score_caps"][p]
         applied = min(raw, cap) if cap is not None else raw
