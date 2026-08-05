@@ -152,8 +152,12 @@ def load_cases(path):
 # METRIC COMPUTATION
 # --------------------------------------------------------------------------
 def age_bucket_index(days):
+    # floor to whole days first - age_buckets has gaps between integer bounds
+    # (e.g. 2 and 3), so a fractional value like 2.4 would otherwise match no
+    # range and fall through to the last/most-severe bucket by mistake.
+    d = int(days)
     for i, (lo, hi) in enumerate(CONFIG["age_buckets"]):
-        if lo <= days <= hi:
+        if lo <= d <= hi:
             return i
     return len(CONFIG["age_buckets"]) - 1
 
