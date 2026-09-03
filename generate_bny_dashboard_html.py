@@ -17,6 +17,7 @@ Output:
 """
 
 import os
+from urllib.parse import quote
 
 import pandas as pd
 
@@ -31,6 +32,13 @@ from generate_bny_dashboard import (
 
 RAG_HEX = {"G": "#16a34a", "A": "#f59e0b", "R": "#dc2626"}
 BAND_HEX = {"GREEN": "#16a34a", "AMBER": "#f59e0b", "RED": "#dc2626"}
+
+# Same OneDrive-synced SharePoint folder publish_to_sharepoint.py copies the
+# PDF and source xlsx into - used to build the Appendix B hyperlink.
+SHAREPOINT_FOLDER_URL = (
+    "https://vfmcorp-my.sharepoint.com/personal/tsmith_vfmc_vic_gov_au"
+    "/Documents/Applications/BNY%20Services/"
+)
 
 
 def esc(text):
@@ -354,7 +362,61 @@ def appendix_html(m):
     """
 
 
-def build_html(m):
+def appendix_b_html(m, xlsx_url):
+    def field(r, col):
+        val = r.get(col, "")
+        return "" if pd.isna(val) else str(val)
+
+    open_df = m["open_df"]
+    rows = []
+    for i in range(len(open_df)):
+        r = open_df.iloc[i]
+        rag = r["RAG"]
+        subj = esc(str(r["Subject"]))
+        state = esc(field(r, "State"))
+        case_type = esc(field(r, "Case Type"))
+        creator = esc(field(r, "Submitted By"))
+        environment = esc(field(r, "Environment"))
+        esc_flag = "Y" if r["State"] == "Escalation" else "N"
+        updated_dt = r.get("Updated_dt")
+        updated_txt = updated_dt.strftime("%d %b %Y") if pd.notna(updated_dt) else esc(str(r.get("Updated", "") or ""))
+        rows.append(
+            "<tr>"
+            f"<td>{esc(r['Number'])}</td>"
+            f"<td>{esc(r['Priority'])}</td>"
+            f"<td style='text-align:center'>{r['Days Open']:.0f}</td>"
+            f"<td style='text-align:center'><span class='pill' style='background:{RAG_HEX[rag]}'>{r['PriorityCode']}</span></td>"
+            f"<td>{subj}</td>"
+            f"<td>{state}</td>"
+            f"<td style='text-align:center'>{esc_flag}</td>"
+            f"<td>{case_type}</td>"
+            f"<td>{creator}</td>"
+            "<td>&mdash;</td>"
+            f"<td>{updated_txt}</td>"
+            f"<td>{environment}</td>"
+            "<td>&mdash;</td>"
+            "</tr>"
+        )
+    if not rows:
+        rows.append("<tr><td colspan='13'>No open cases</td></tr>")
+    table = (
+        '<table class="data open-cases"><thead><tr>'
+        "<th>Case</th><th>Priority</th><th>Days</th><th>RAG</th><th>Issue Summary</th><th>State</th>"
+        "<th>Esc?</th><th>Case Type</th><th>Creator</th><th>Assignee</th><th>Update</th>"
+        "<th>Environment</th><th>Business Services</th>"
+        "</tr></thead><tbody>" + "".join(rows) + "</tbody></table>"
+    )
+    return f"""
+      <div class="chart-note" style="margin-bottom:10px">
+        Source data export: <a href="{xlsx_url}" target="_blank" rel="noopener">{esc(os.path.basename(xlsx_url))}</a>
+        &nbsp;(Assignee / Business Services are not available via the automated export - shown as &mdash;.)
+      </div>
+      <div class="section-title">All open cases ({len(open_df)}) &ndash; sorted by age (oldest first), then priority</div>
+      {table}
+    """
+
+
+def build_html(m, xlsx_url):
     asof_str = m["asof"].strftime("%d %b %Y")
     line = svg_line_chart(m["week_labels"], m["mttr_p1"], m["mttr_p2"], CONFIG["mttr_outlier_cap_days"])
     bars = svg_bar_chart(
@@ -422,6 +484,23 @@ def build_html(m):
   .appendix-grid {{ display:grid; grid-template-columns:1fr 1fr; gap:28px; align-items:start; }}
   .final-calc {{ margin-top:16px; font-size:1rem; font-weight:700; }}
   .final-score {{ display:inline-block; color:#fff; padding:4px 14px; border-radius:8px; margin-left:6px; }}
+  table.open-cases {{ table-layout:fixed; font-size:.72rem; }}
+  table.open-cases th, table.open-cases td {{ padding:4px 6px; word-wrap:break-word; overflow-wrap:break-word; }}
+  table.open-cases thead {{ display:table-header-group; }}
+  table.open-cases tr {{ page-break-inside:avoid; }}
+  table.open-cases th:nth-child(1), table.open-cases td:nth-child(1) {{ width:7%; }}
+  table.open-cases th:nth-child(2), table.open-cases td:nth-child(2) {{ width:6%; }}
+  table.open-cases th:nth-child(3), table.open-cases td:nth-child(3) {{ width:4%; }}
+  table.open-cases th:nth-child(4), table.open-cases td:nth-child(4) {{ width:4%; }}
+  table.open-cases th:nth-child(5), table.open-cases td:nth-child(5) {{ width:22%; }}
+  table.open-cases th:nth-child(6), table.open-cases td:nth-child(6) {{ width:8%; }}
+  table.open-cases th:nth-child(7), table.open-cases td:nth-child(7) {{ width:5%; }}
+  table.open-cases th:nth-child(8), table.open-cases td:nth-child(8) {{ width:9%; }}
+  table.open-cases th:nth-child(9), table.open-cases td:nth-child(9) {{ width:8%; }}
+  table.open-cases th:nth-child(10), table.open-cases td:nth-child(10) {{ width:6%; }}
+  table.open-cases th:nth-child(11), table.open-cases td:nth-child(11) {{ width:7%; }}
+  table.open-cases th:nth-child(12), table.open-cases td:nth-child(12) {{ width:8%; }}
+  table.open-cases th:nth-child(13), table.open-cases td:nth-child(13) {{ width:6%; }}
   @media print {{
     body {{ background:#fff; }}
     .page {{ box-shadow:none; margin:0; max-width:none; page-break-after:always; }}
@@ -485,14 +564,25 @@ def build_html(m):
     </div>
   </div>
 
-  <!-- PAGE 3 - APPENDIX -->
+  <!-- PAGE 3 - APPENDIX A -->
   <div class="page">
     <div class="header">
-      <h1>Appendix &ndash; Management Attention Score Methodology</h1>
+      <h1>Appendix A &ndash; Management Attention Score Methodology</h1>
       <div class="sub">Full transparency of how today's score ({m['score']} &middot; {m['band']}) is calculated | As at {asof_str}</div>
     </div>
     <div class="body">
       {appendix_html(m)}
+    </div>
+  </div>
+
+  <!-- PAGE 4 - APPENDIX B -->
+  <div class="page">
+    <div class="header">
+      <h1>Appendix B &ndash; Full Open Case Listing</h1>
+      <div class="sub">As at {asof_str}</div>
+    </div>
+    <div class="body">
+      {appendix_b_html(m, xlsx_url)}
     </div>
     <div class="footer-note">
       Source & generator: <a href="https://github.com/TSmith-VFMC/Customised-Survey-Dashboard" target="_blank" rel="noopener">github.com/TSmith-VFMC/Customised-Survey-Dashboard</a>
@@ -513,7 +603,8 @@ def main():
     df = load_cases(source_path)
     m = compute_metrics(df, asof)
 
-    html = build_html(m)
+    xlsx_url = SHAREPOINT_FOLDER_URL + quote(os.path.basename(source_path))
+    html = build_html(m, xlsx_url)
     out_name = f'BNY_Executive_Dashboard_Services_{asof.strftime("%d%m%Y")}.html'
     out_path = os.path.join(CONFIG["source_dir"], out_name)
     with open(out_path, "w", encoding="utf-8") as fh:

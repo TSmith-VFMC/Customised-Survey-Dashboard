@@ -15,6 +15,7 @@ Output:
 """
 
 import os
+from urllib.parse import quote
 
 import pandas as pd
 from playwright.sync_api import sync_playwright
@@ -26,7 +27,7 @@ from generate_bny_dashboard import (
     load_cases,
     parse_asof_from_filename,
 )
-from generate_bny_dashboard_html import build_html
+from generate_bny_dashboard_html import SHAREPOINT_FOLDER_URL, build_html
 
 
 def render_pdf(html: str, out_path: str) -> None:
@@ -50,7 +51,8 @@ def main():
     df = load_cases(source_path)
     m = compute_metrics(df, asof)
 
-    html = build_html(m)
+    xlsx_url = SHAREPOINT_FOLDER_URL + quote(os.path.basename(source_path))
+    html = build_html(m, xlsx_url)
     out_name = f'BNY_Executive_Dashboard_Services_{asof.strftime("%d%m%Y")}.pdf'
     out_path = os.path.join(CONFIG["source_dir"], out_name)
     render_pdf(html, out_path)

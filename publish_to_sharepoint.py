@@ -37,17 +37,30 @@ def find_latest_pdf(source_dir: str, pattern: str) -> str:
     return max(candidates, key=os.path.getmtime)
 
 
+def find_latest_xlsx(source_dir: str, pattern: str) -> str:
+    candidates = glob.glob(os.path.join(source_dir, pattern))
+    if not candidates:
+        raise FileNotFoundError(f"No files matching {pattern!r} found in {source_dir}")
+    return max(candidates, key=os.path.getmtime)
+
+
 def main():
-    pdf_path = find_latest_pdf(CONFIG["source_dir"], PUBLISH_CONFIG["pdf_glob"])
     target_dir = PUBLISH_CONFIG["target_dir"]
     if not os.path.isdir(target_dir):
         raise FileNotFoundError(
             f"OneDrive target folder not found: {target_dir}\n"
             "Check the OneDrive sync client is running and the folder name/path is correct."
         )
-    dest_path = os.path.join(target_dir, os.path.basename(pdf_path))
-    shutil.copy2(pdf_path, dest_path)
-    print(f"Published: {dest_path}")
+
+    pdf_path = find_latest_pdf(CONFIG["source_dir"], PUBLISH_CONFIG["pdf_glob"])
+    pdf_dest = os.path.join(target_dir, os.path.basename(pdf_path))
+    shutil.copy2(pdf_path, pdf_dest)
+    print(f"Published: {pdf_dest}")
+
+    xlsx_path = find_latest_xlsx(CONFIG["source_dir"], CONFIG["source_glob"])
+    xlsx_dest = os.path.join(target_dir, os.path.basename(xlsx_path))
+    shutil.copy2(xlsx_path, xlsx_dest)
+    print(f"Published: {xlsx_dest}")
 
 
 if __name__ == "__main__":
