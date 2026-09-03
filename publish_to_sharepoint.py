@@ -54,6 +54,9 @@ def main():
 
     pdf_path = find_latest_pdf(CONFIG["source_dir"], PUBLISH_CONFIG["pdf_glob"])
     pdf_dest = os.path.join(target_dir, os.path.basename(pdf_path))
+    if os.path.abspath(pdf_path) == os.path.abspath(pdf_dest):
+        print(f"Already in target folder, nothing to publish: {target_dir}")
+        return
     shutil.copy2(pdf_path, pdf_dest)
     print(f"Published: {pdf_dest}")
 

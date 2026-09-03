@@ -42,7 +42,10 @@ from pptx.util import Emu, Inches, Pt
 # CONFIG
 # --------------------------------------------------------------------------
 CONFIG = {
-    "source_dir": r"C:\Users\tsmith\Desktop\BNY Service Health",
+    "source_dir": (
+        r"C:\Users\tsmith\OneDrive - VICTORIAN FUNDS MANAGEMENT CORPORATION"
+        r"\Applications\BNY Services"
+    ),
     "source_glob": "VFM_Cases_*.xlsx",
     "closed_states": {"Closed", "Resolved", "Cancelled"},
     "priority_map": {"Critical": "P1", "High": "P2", "Moderate": "P3", "Low": "P4"},
