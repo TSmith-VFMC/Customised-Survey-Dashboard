@@ -50,7 +50,7 @@ CONFIG = {
     # root-cause analysis: excluded from KPIs, risk matrix, score, watchlist and
     # the priority bars, and surfaced separately (own bar + table).
     "pending_rca_column": "Customer Keyword",
-    "pending_rca_keyword": "Pending RCA",
+    "pending_rca_keywords": ["Pending RCA", "Pending for RCA"],
     "age_buckets": [(0, 2), (3, 5), (6, 10), (11, 10**6)],
     "age_bucket_labels": ["0-2d", "3-5d", "6-10d", "10+d"],
     # RAG per priority row x age bucket column ("G" green / "A" amber / "R" red)
@@ -165,8 +165,8 @@ def age_bucket_index(days):
 def detect_pending_rca(open_df):
     """Boolean Series flagging cases parked awaiting root-cause analysis.
 
-    True where the CONFIG["pending_rca_column"] cell contains
-    CONFIG["pending_rca_keyword"] (case-insensitive). The column is optional -
+    True where the CONFIG["pending_rca_column"] cell contains any of
+    CONFIG["pending_rca_keywords"] (case-insensitive). The column is optional -
     older exports do not have it, in which case no case is treated as pending
     and the dashboard behaves exactly as before.
     """
@@ -174,7 +174,10 @@ def detect_pending_rca(open_df):
     if col not in open_df.columns:
         return pd.Series(False, index=open_df.index)
     values = open_df[col].fillna("").astype(str)
-    return values.str.contains(CONFIG["pending_rca_keyword"], case=False, na=False, regex=False)
+    mask = pd.Series(False, index=open_df.index)
+    for keyword in CONFIG["pending_rca_keywords"]:
+        mask |= values.str.contains(keyword, case=False, na=False, regex=False)
+    return mask
 
 
 def detect_repeat_themes(df, open_index):
@@ -227,6 +230,7 @@ def detect_repeat_themes(df, open_index):
 
 def compute_metrics(df, asof):
     closed_states = CONFIG["closed_states"]
+    priority_rank = {"P1": 0, "P2": 1, "P3": 2, "P4": 3}
     open_df = df[~df["State"].isin(closed_states)].copy()
     open_df["Days Open"] = (asof - open_df["Opened_dt"]).dt.total_seconds() / 86400
     open_df["Days Open"] = open_df["Days Open"].clip(lower=0)
@@ -235,7 +239,10 @@ def compute_metrics(df, asof):
         lambda r: CONFIG["risk_matrix"][r["PriorityCode"]][r["AgeBucket"]], axis=1
     )
     open_df["PendingRCA"] = detect_pending_rca(open_df)
-    open_df = open_df.sort_values("Days Open", ascending=False)
+    # Sort by age (oldest first), then priority (P1 first) as the tiebreaker -
+    # this ordering also drives the Appendix B full open-case listing.
+    open_df["_priority_rank"] = open_df["PriorityCode"].map(priority_rank)
+    open_df = open_df.sort_values(by=["Days Open", "_priority_rank"], ascending=[False, True])
 
     # Pending-RCA cases are parked awaiting root-cause analysis: they are
     # excluded from the KPIs, risk matrix, score, watchlist and priority bars,
@@ -307,7 +314,6 @@ def compute_metrics(df, asof):
     # critical/highest-priority items always surface even if a lower
     # priority ticket happens to be older.
     rag_rank = {"R": 0, "A": 1, "G": 2}
-    priority_rank = {"P1": 0, "P2": 1, "P3": 2, "P4": 3}
     watch = active_df.copy()
     watch["Eligible"] = (
         (watch["Days Open"] > 30)
