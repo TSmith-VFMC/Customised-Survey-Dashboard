@@ -377,6 +377,7 @@ def appendix_b_html(m, xlsx_url):
         case_type = esc(field(r, "Case Type"))
         creator = esc(field(r, "Submitted By"))
         environment = esc(field(r, "Environment"))
+        component = esc(field(r, "Component"))
         esc_flag = "Y" if r["State"] == "Escalation" else "N"
         updated_dt = r.get("Updated_dt")
         updated_txt = updated_dt.strftime("%d %b %Y") if pd.notna(updated_dt) else esc(str(r.get("Updated", "") or ""))
@@ -394,7 +395,7 @@ def appendix_b_html(m, xlsx_url):
             "<td>&mdash;</td>"
             f"<td>{updated_txt}</td>"
             f"<td>{environment}</td>"
-            "<td>&mdash;</td>"
+            f"<td>{component}</td>"
             "</tr>"
         )
     if not rows:
@@ -403,13 +404,13 @@ def appendix_b_html(m, xlsx_url):
         '<table class="data open-cases"><thead><tr>'
         "<th>Case</th><th>Priority</th><th>Days</th><th>RAG</th><th>Issue Summary</th><th>State</th>"
         "<th>Esc?</th><th>Case Type</th><th>Creator</th><th>Assignee</th><th>Update</th>"
-        "<th>Environment</th><th>Business Services</th>"
+        "<th>Environment</th><th>Component</th>"
         "</tr></thead><tbody>" + "".join(rows) + "</tbody></table>"
     )
     return f"""
       <div class="chart-note" style="margin-bottom:10px">
         Source data export: <a href="{xlsx_url}" target="_blank" rel="noopener">{esc(os.path.basename(xlsx_url))}</a>
-        &nbsp;(Assignee / Business Services are not available via the automated export - shown as &mdash;.)
+        &nbsp;(Assignee is not available via the automated export - shown as &mdash;.)
       </div>
       <div class="section-title">All open cases ({len(open_df)}) &ndash; sorted by age (oldest first), then priority</div>
       {table}
@@ -492,7 +493,7 @@ def build_html(m, xlsx_url):
   table.open-cases th:nth-child(2), table.open-cases td:nth-child(2) {{ width:6%; }}
   table.open-cases th:nth-child(3), table.open-cases td:nth-child(3) {{ width:4%; }}
   table.open-cases th:nth-child(4), table.open-cases td:nth-child(4) {{ width:4%; }}
-  table.open-cases th:nth-child(5), table.open-cases td:nth-child(5) {{ width:22%; }}
+  table.open-cases th:nth-child(5), table.open-cases td:nth-child(5) {{ width:20%; }}
   table.open-cases th:nth-child(6), table.open-cases td:nth-child(6) {{ width:8%; }}
   table.open-cases th:nth-child(7), table.open-cases td:nth-child(7) {{ width:5%; }}
   table.open-cases th:nth-child(8), table.open-cases td:nth-child(8) {{ width:9%; }}
@@ -500,7 +501,7 @@ def build_html(m, xlsx_url):
   table.open-cases th:nth-child(10), table.open-cases td:nth-child(10) {{ width:6%; }}
   table.open-cases th:nth-child(11), table.open-cases td:nth-child(11) {{ width:7%; }}
   table.open-cases th:nth-child(12), table.open-cases td:nth-child(12) {{ width:8%; }}
-  table.open-cases th:nth-child(13), table.open-cases td:nth-child(13) {{ width:6%; }}
+  table.open-cases th:nth-child(13), table.open-cases td:nth-child(13) {{ width:8%; }}
   @media print {{
     body {{ background:#fff; }}
     .page {{ box-shadow:none; margin:0; max-width:none; page-break-after:always; }}
