@@ -504,8 +504,32 @@ def build_html(m, xlsx_url, pdf_url):
   table.open-cases th:nth-child(11), table.open-cases td:nth-child(11) {{ width:7%; }}
   table.open-cases th:nth-child(12), table.open-cases td:nth-child(12) {{ width:8%; }}
   table.open-cases th:nth-child(13), table.open-cases td:nth-child(13) {{ width:8%; }}
+  /* On-screen info pane (hidden when printing / in the PDF) */
+  .app-shell {{ display:flex; gap:22px; max-width:1520px; margin:0 auto; padding:24px 18px; align-items:flex-start; }}
+  .pages-wrap {{ flex:1; min-width:0; }}
+  .pages-wrap .page {{ margin:0 0 32px; }}
+  .info-pane {{ width:300px; flex-shrink:0; position:sticky; top:24px; display:flex; flex-direction:column; gap:16px; max-height:calc(100vh - 48px); overflow-y:auto; }}
+  .info-pane::-webkit-scrollbar {{ width:5px; }}
+  .info-pane::-webkit-scrollbar-thumb {{ background:var(--border); border-radius:9999px; }}
+  .info-card {{ background:var(--surface); border-radius:10px; border:1px solid var(--border); box-shadow:0 4px 12px rgba(0,0,0,.08); padding:16px; }}
+  .info-card-title {{ font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.09em; color:var(--muted); margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid var(--border); }}
+  .info-pane-head {{ background:var(--navy); color:#fff; border-radius:10px; padding:14px 16px; }}
+  .info-pane-head h2 {{ font-size:.95rem; font-weight:700; }}
+  .info-pane-head p {{ font-size:.72rem; color:#c7d2e0; margin-top:3px; }}
+  .guide-step {{ display:flex; gap:10px; margin-bottom:11px; }}
+  .guide-step:last-child {{ margin-bottom:0; }}
+  .guide-num {{ flex-shrink:0; width:22px; height:22px; border-radius:50%; background:var(--navy); color:#fff; font-size:.72rem; font-weight:700; display:flex; align-items:center; justify-content:center; }}
+  .guide-text {{ font-size:.78rem; line-height:1.42; }}
+  .tech-block {{ margin-bottom:14px; }}
+  .tech-block:last-child {{ margin-bottom:0; }}
+  .tech-block-title {{ font-size:.8rem; font-weight:700; margin-bottom:6px; color:var(--navy); }}
+  .tech-item {{ font-size:.75rem; line-height:1.45; color:var(--muted); margin-bottom:5px; }}
+  .info-code {{ font-family:Consolas,'Courier New',monospace; background:#f1f5f9; padding:1px 5px; border-radius:4px; font-size:.72rem; color:var(--navy); }}
   @media print {{
     body {{ background:#fff; }}
+    .app-shell {{ display:block; padding:0; max-width:none; }}
+    .info-pane {{ display:none; }}
+    .pages-wrap .page {{ margin:0; }}
     .page {{ box-shadow:none; margin:0; max-width:none; page-break-after:always; }}
     .page:last-child {{ page-break-after:auto; }}
     @page {{ size:A4 landscape; margin:8mm; }}
@@ -513,6 +537,59 @@ def build_html(m, xlsx_url, pdf_url):
 </style>
 </head>
 <body>
+<div class="app-shell">
+
+  <!-- LEFT INFO PANE (screen only) -->
+  <aside class="info-pane">
+    <div class="info-pane-head">
+      <h2>Dashboard Guide</h2>
+      <p>How to run &amp; how it works</p>
+    </div>
+
+    <div class="info-card">
+      <div class="info-card-title">User Guide &ndash; Running the Dashboard</div>
+      <div class="guide-step"><div class="guide-num">1</div><div class="guide-text">Open the <strong>VFMC Daily Scorecard</strong> folder in File Explorer (synced from SharePoint/Teams).</div></div>
+      <div class="guide-step"><div class="guide-num">2</div><div class="guide-text">Double-click <span class="info-code">Run_BNY_Dashboard.bat</span>.</div></div>
+      <div class="guide-step"><div class="guide-num">3</div><div class="guide-text">It fetches the latest cases from the BNY (Eagle) portal. If your saved session has expired, it asks for your portal email (press <strong>Enter</strong> to accept the default) then your <strong>password</strong>.</div></div>
+      <div class="guide-step"><div class="guide-num">4</div><div class="guide-text">The dashboard runs: <em>fetch &rarr; HTML &rarr; PDF &rarr; archive</em>.</div></div>
+      <div class="guide-step"><div class="guide-num">5</div><div class="guide-text">This page opens automatically as the latest dashboard.</div></div>
+      <div class="guide-step"><div class="guide-num">6</div><div class="guide-text">The dated PDF and source data are moved to the <span class="info-code">Archive</span> subfolder &ndash; download links are in <strong>Appendix B</strong>.</div></div>
+    </div>
+
+    <div class="info-card">
+      <div class="info-card-title">Data &amp; Technical Information</div>
+
+      <div class="tech-block">
+        <div class="tech-block-title">&#9881;&#65039; How It Works</div>
+        <div class="tech-item">A self-service <strong>citizen-developer</strong> solution &ndash; a set of Python scripts, no dedicated server or licence.</div>
+        <div class="tech-item">Each run rebuilds this single-file HTML report plus a print-ready PDF from live case data.</div>
+      </div>
+
+      <div class="tech-block">
+        <div class="tech-block-title">&#128229; Data Sourcing</div>
+        <div class="tech-item"><span class="info-code">fetch_latest_export.py</span> uses Playwright to sign in to the Eagle client portal and export the open-case list to Excel.</div>
+        <div class="tech-item">Your password is entered at runtime and <strong>never stored</strong>; the login session is cached until it expires.</div>
+      </div>
+
+      <div class="tech-block">
+        <div class="tech-block-title">&#129518; Scoring</div>
+        <div class="tech-item">The Management Attention Score weights open priorities, case ageing and repeat-incident themes (see <strong>Appendix A</strong>).</div>
+      </div>
+
+      <div class="tech-block">
+        <div class="tech-block-title">&#128451;&#65039; Outputs &amp; Archive</div>
+        <div class="tech-item"><span class="info-code">BNY_Executive_Dashboard_Latest.html</span> is the always-current view in the main folder.</div>
+        <div class="tech-item">Dated PDF and XLSX are archived and links surfaced in Appendix B; the folder syncs via SharePoint/Teams.</div>
+      </div>
+
+      <div class="tech-block">
+        <div class="tech-block-title">&#128295; Built With</div>
+        <div class="tech-item">Python (pandas, Playwright, openpyxl). Source on <a href="https://github.com/TSmith-VFMC/Customised-Survey-Dashboard" target="_blank" rel="noopener">GitHub</a>.</div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="pages-wrap">
 
   <!-- PAGE 1 -->
   <div class="page">
@@ -592,6 +669,8 @@ def build_html(m, xlsx_url, pdf_url):
     </div>
   </div>
 
+  </div><!-- /pages-wrap -->
+</div><!-- /app-shell -->
 </body>
 </html>
 """
