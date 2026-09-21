@@ -362,7 +362,7 @@ def appendix_html(m):
     """
 
 
-def appendix_b_html(m, xlsx_url):
+def appendix_b_html(m, xlsx_url, pdf_url):
     def field(r, col):
         val = r.get(col, "")
         return "" if pd.isna(val) else str(val)
@@ -409,7 +409,9 @@ def appendix_b_html(m, xlsx_url):
     )
     return f"""
       <div class="chart-note" style="margin-bottom:10px">
-        Source data export: <a href="{xlsx_url}" target="_blank" rel="noopener">{esc(os.path.basename(xlsx_url))}</a>
+        Downloads (archive):
+        <a href="{pdf_url}" target="_blank" rel="noopener">PDF</a> &middot;
+        <a href="{xlsx_url}" target="_blank" rel="noopener">source data ({esc(os.path.basename(xlsx_url))})</a>
         &nbsp;(Assignee is not available via the automated export - shown as &mdash;.)
       </div>
       <div class="section-title">All open cases ({len(open_df)}) &ndash; sorted by age (oldest first), then priority</div>
@@ -417,7 +419,7 @@ def appendix_b_html(m, xlsx_url):
     """
 
 
-def build_html(m, xlsx_url):
+def build_html(m, xlsx_url, pdf_url):
     asof_str = m["asof"].strftime("%d %b %Y")
     line = svg_line_chart(m["week_labels"], m["mttr_p1"], m["mttr_p2"], CONFIG["mttr_outlier_cap_days"])
     bars = svg_bar_chart(
@@ -583,7 +585,7 @@ def build_html(m, xlsx_url):
       <div class="sub">As at {asof_str}</div>
     </div>
     <div class="body">
-      {appendix_b_html(m, xlsx_url)}
+      {appendix_b_html(m, xlsx_url, pdf_url)}
     </div>
     <div class="footer-note">
       Source & generator: <a href="https://github.com/TSmith-VFMC/Customised-Survey-Dashboard" target="_blank" rel="noopener">github.com/TSmith-VFMC/Customised-Survey-Dashboard</a>
@@ -604,9 +606,12 @@ def main():
     df = load_cases(source_path)
     m = compute_metrics(df, asof)
 
-    xlsx_url = SHAREPOINT_FOLDER_URL + quote(os.path.basename(source_path))
-    html = build_html(m, xlsx_url)
-    out_name = f'BNY_Executive_Dashboard_Services_{asof.strftime("%Y-%m-%d")}.html'
+    archive_url = SHAREPOINT_FOLDER_URL + "Archive/"
+    xlsx_url = archive_url + quote(os.path.basename(source_path))
+    pdf_name = f'BNY_Executive_Dashboard_Services_{asof.strftime("%Y-%m-%d")}.pdf'
+    pdf_url = archive_url + quote(pdf_name)
+    html = build_html(m, xlsx_url, pdf_url)
+    out_name = "BNY_Executive_Dashboard_Latest.html"
     out_path = os.path.join(CONFIG["source_dir"], out_name)
     with open(out_path, "w", encoding="utf-8") as fh:
         fh.write(html)

@@ -115,7 +115,10 @@ RAG_LABEL = {"G": "Green", "A": "Amber", "R": "Red"}
 # DATA LOADING
 # --------------------------------------------------------------------------
 def find_latest_source_file(source_dir, pattern):
+    # search the top-level folder plus the Archive subfolder, so generation
+    # still finds the newest export after it has been moved to the archive
     candidates = glob.glob(os.path.join(source_dir, pattern))
+    candidates += glob.glob(os.path.join(source_dir, "Archive", pattern))
     if not candidates:
         raise FileNotFoundError(f"No files matching {pattern!r} found in {source_dir}")
 

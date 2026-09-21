@@ -51,9 +51,11 @@ def main():
     df = load_cases(source_path)
     m = compute_metrics(df, asof)
 
-    xlsx_url = SHAREPOINT_FOLDER_URL + quote(os.path.basename(source_path))
-    html = build_html(m, xlsx_url)
+    archive_url = SHAREPOINT_FOLDER_URL + "Archive/"
+    xlsx_url = archive_url + quote(os.path.basename(source_path))
     out_name = f'BNY_Executive_Dashboard_Services_{asof.strftime("%Y-%m-%d")}.pdf'
+    pdf_url = archive_url + quote(out_name)
+    html = build_html(m, xlsx_url, pdf_url)
     out_path = os.path.join(CONFIG["source_dir"], out_name)
     render_pdf(html, out_path)
     print(f"Saved: {out_path}")
