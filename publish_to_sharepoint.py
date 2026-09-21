@@ -24,8 +24,8 @@ from generate_bny_dashboard import CONFIG
 PUBLISH_CONFIG = {
     "pdf_glob": "BNY_Executive_Dashboard_Services_*.pdf",
     "target_dir": (
-        r"C:\Users\tsmith\OneDrive - VICTORIAN FUNDS MANAGEMENT CORPORATION"
-        r"\Applications\BNY Services"
+        r"C:\Users\tsmith\VICTORIAN FUNDS MANAGEMENT CORPORATION"
+        r"\External - VFMC BNY Mellon - VFMC Daily Scorecard"
     ),
 }
 

@@ -36,8 +36,8 @@ BAND_HEX = {"GREEN": "#16a34a", "AMBER": "#f59e0b", "RED": "#dc2626"}
 # Same OneDrive-synced SharePoint folder publish_to_sharepoint.py copies the
 # PDF and source xlsx into - used to build the Appendix B hyperlink.
 SHAREPOINT_FOLDER_URL = (
-    "https://vfmcorp-my.sharepoint.com/personal/tsmith_vfmc_vic_gov_au"
-    "/Documents/Applications/BNY%20Services/"
+    "https://vfmcorp.sharepoint.com/sites/External-VFMCBNYMellon"
+    "/Shared%20Documents/General/Operations/VFMC%20Daily%20Scorecard/"
 )
 
 

@@ -43,8 +43,8 @@ from pptx.util import Emu, Inches, Pt
 # --------------------------------------------------------------------------
 CONFIG = {
     "source_dir": (
-        r"C:\Users\tsmith\OneDrive - VICTORIAN FUNDS MANAGEMENT CORPORATION"
-        r"\Applications\BNY Services"
+        r"C:\Users\tsmith\VICTORIAN FUNDS MANAGEMENT CORPORATION"
+        r"\External - VFMC BNY Mellon - VFMC Daily Scorecard"
     ),
     "source_glob": "VFM_Cases_*.xlsx",
     "closed_states": {"Closed", "Resolved", "Cancelled"},
