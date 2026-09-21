@@ -56,6 +56,7 @@ LOGIN_SELECTORS = {
 AUTH_DIR = str(Path(__file__).parent / ".auth")
 KEYRING_SERVICE = "eagle-xpclientportal"
 KEYRING_USERNAME_KEY = "username"  # fixed lookup key storing the login email
+DEFAULT_USERNAME = "tsmith@vfmc.vic.gov.au"  # login pre-filled when none is stored
 XLSX_MAGIC = b"PK\x03\x04"  # zip/xlsx file signature
 
 
@@ -93,16 +94,20 @@ def set_credentials() -> None:
 
 
 def _load_credentials() -> tuple[str, str]:
-    username = keyring.get_password(KEYRING_SERVICE, KEYRING_USERNAME_KEY)
-    if not username:
-        raise RuntimeError(
-            "No stored credentials found. Run: python fetch_latest_export.py --set-credentials"
-        )
-    password = keyring.get_password(KEYRING_SERVICE, username)
+    """Resolve the portal login interactively.
+
+    The username defaults to the stored value (or DEFAULT_USERNAME) so a run
+    just needs Enter to accept it; the password is always typed in at runtime
+    and never stored. This means the pipeline works on any machine without a
+    one-time credential setup - it simply asks when a fresh login is required.
+    """
+    stored = keyring.get_password(KEYRING_SERVICE, KEYRING_USERNAME_KEY)
+    default_user = stored or DEFAULT_USERNAME
+    entered = input(f"Portal login email [{default_user}]: ").strip()
+    username = entered or default_user
+    password = _masked_input("Portal password: ")
     if not password:
-        raise RuntimeError(
-            f"No stored password found for {username}. Run: python fetch_latest_export.py --set-credentials"
-        )
+        raise RuntimeError("No password entered - aborting login.")
     return username, password
 
 
@@ -166,7 +171,6 @@ def _download_export(page, debug: bool = False) -> bytes | None:
 
 
 def fetch_export(headless: bool = True, debug: bool = False) -> Path:
-    username, password = _load_credentials()
     Path(AUTH_DIR).mkdir(exist_ok=True)
 
     with sync_playwright() as p:
@@ -177,6 +181,8 @@ def fetch_export(headless: bool = True, debug: bool = False) -> Path:
             _visit_tickets_list(page, debug=debug)
             body = _download_export(page, debug=debug)
             if body is None or not body.startswith(XLSX_MAGIC):
+                # Saved session has expired - prompt for login now.
+                username, password = _load_credentials()
                 _login(page, username, password, debug=debug)
                 _visit_tickets_list(page, debug=debug)
                 body = _download_export(page, debug=debug)
