@@ -770,7 +770,7 @@ def main():
     build_slide2(prs, m)
     build_slide3(prs, m)
 
-    out_name = f'BNY_Executive_Dashboard_Services_{asof.strftime("%d%m%Y")}.pptx'
+    out_name = f'BNY_Executive_Dashboard_Services_{asof.strftime("%Y-%m-%d")}.pptx'
     out_path = os.path.join(CONFIG["source_dir"], out_name)
     prs.save(out_path)
     print(f"Saved: {out_path}")

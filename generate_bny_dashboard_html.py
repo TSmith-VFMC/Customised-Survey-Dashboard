@@ -606,7 +606,7 @@ def main():
 
     xlsx_url = SHAREPOINT_FOLDER_URL + quote(os.path.basename(source_path))
     html = build_html(m, xlsx_url)
-    out_name = f'BNY_Executive_Dashboard_Services_{asof.strftime("%d%m%Y")}.html'
+    out_name = f'BNY_Executive_Dashboard_Services_{asof.strftime("%Y-%m-%d")}.html'
     out_path = os.path.join(CONFIG["source_dir"], out_name)
     with open(out_path, "w", encoding="utf-8") as fh:
         fh.write(html)
