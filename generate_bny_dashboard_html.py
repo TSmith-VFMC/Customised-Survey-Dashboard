@@ -513,9 +513,15 @@ def build_html(m, xlsx_url, pdf_url):
   .info-pane::-webkit-scrollbar-thumb {{ background:var(--border); border-radius:9999px; }}
   .info-card {{ background:var(--surface); border-radius:10px; border:1px solid var(--border); box-shadow:0 4px 12px rgba(0,0,0,.08); padding:16px; }}
   .info-card-title {{ font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.09em; color:var(--muted); margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid var(--border); }}
-  .info-pane-head {{ background:var(--navy); color:#fff; border-radius:10px; padding:14px 16px; }}
+  .info-pane-head {{ background:var(--navy); color:#fff; border-radius:10px; padding:14px 16px; cursor:pointer; display:flex; align-items:center; gap:10px; user-select:none; }}
+  .info-pane-head .head-text {{ flex:1; }}
   .info-pane-head h2 {{ font-size:.95rem; font-weight:700; }}
   .info-pane-head p {{ font-size:.72rem; color:#c7d2e0; margin-top:3px; }}
+  .info-pane-toggle {{ flex-shrink:0; font-size:.9rem; line-height:1; transition:transform .2s ease; }}
+  .info-pane.collapsed {{ width:auto; }}
+  .info-pane.collapsed .info-card {{ display:none; }}
+  .info-pane.collapsed .info-pane-head p {{ display:none; }}
+  .info-pane.collapsed .info-pane-toggle {{ transform:rotate(-90deg); }}
   .guide-step {{ display:flex; gap:10px; margin-bottom:11px; }}
   .guide-step:last-child {{ margin-bottom:0; }}
   .guide-num {{ flex-shrink:0; width:22px; height:22px; border-radius:50%; background:var(--navy); color:#fff; font-size:.72rem; font-weight:700; display:flex; align-items:center; justify-content:center; }}
@@ -540,10 +546,13 @@ def build_html(m, xlsx_url, pdf_url):
 <div class="app-shell">
 
   <!-- LEFT INFO PANE (screen only) -->
-  <aside class="info-pane">
-    <div class="info-pane-head">
-      <h2>Dashboard Guide</h2>
-      <p>How to run &amp; how it works</p>
+  <aside class="info-pane" id="infoPane">
+    <div class="info-pane-head" onclick="document.getElementById('infoPane').classList.toggle('collapsed')">
+      <span class="info-pane-toggle">&#9660;</span>
+      <div class="head-text">
+        <h2>Dashboard Guide</h2>
+        <p>How to run &amp; how it works</p>
+      </div>
     </div>
 
     <div class="info-card">
