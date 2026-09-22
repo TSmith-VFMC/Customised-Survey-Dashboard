@@ -25,6 +25,7 @@ See docs/automated-export-spec.md for the full design.
 import argparse
 import getpass
 import msvcrt
+import os
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -54,7 +55,7 @@ LOGIN_SELECTORS = {
     "password": "#password",
     "submit": "a.ping-button.allow",
 }
-AUTH_DIR = str(Path(__file__).parent / ".auth")
+AUTH_DIR = str(Path(os.environ.get("LOCALAPPDATA", Path.home())) / "BNYDashboard" / ".auth")
 KEYRING_SERVICE = "eagle-xpclientportal"
 KEYRING_USERNAME_KEY = "username"  # fixed lookup key storing the login email
 EMAIL_DOMAIN = "vfmc.vic.gov.au"  # login pre-filled as <windows-user>@<domain>
