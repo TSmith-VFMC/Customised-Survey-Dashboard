@@ -520,7 +520,8 @@ def build_html(m, xlsx_url, pdf_url):
   .info-pane-toggle {{ flex-shrink:0; font-size:.9rem; line-height:1; transition:transform .2s ease; }}
   .info-pane.collapsed {{ width:auto; }}
   .info-pane.collapsed .info-card {{ display:none; }}
-  .info-pane.collapsed .info-pane-head p {{ display:none; }}
+  .info-pane.collapsed .head-text {{ display:none; }}
+  .info-pane.collapsed .info-pane-head {{ padding:10px 12px; border-radius:9999px; }}
   .info-pane.collapsed .info-pane-toggle {{ transform:rotate(-90deg); }}
   .guide-step {{ display:flex; gap:10px; margin-bottom:11px; }}
   .guide-step:last-child {{ margin-bottom:0; }}
