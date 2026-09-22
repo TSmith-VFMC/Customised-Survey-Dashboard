@@ -15,13 +15,15 @@ import shutil
 from generate_bny_dashboard import CONFIG
 
 # Scripts the .bat needs at runtime (generate_bny_dashboard.py holds the shared
-# CONFIG and helpers imported by the others).
+# CONFIG and helpers imported by the others). requirements.txt lets a new user
+# install dependencies straight from the synced folder.
 APP_SCRIPTS = (
     "generate_bny_dashboard.py",
     "generate_bny_dashboard_html.py",
     "generate_bny_dashboard_pdf.py",
     "fetch_latest_export.py",
     "archive_outputs.py",
+    "requirements.txt",
 )
 
 
