@@ -23,6 +23,7 @@ See docs/automated-export-spec.md for the full design.
 """
 
 import argparse
+import getpass
 import msvcrt
 import sys
 from datetime import datetime
@@ -56,8 +57,13 @@ LOGIN_SELECTORS = {
 AUTH_DIR = str(Path(__file__).parent / ".auth")
 KEYRING_SERVICE = "eagle-xpclientportal"
 KEYRING_USERNAME_KEY = "username"  # fixed lookup key storing the login email
-DEFAULT_USERNAME = "tsmith@vfmc.vic.gov.au"  # login pre-filled when none is stored
+EMAIL_DOMAIN = "vfmc.vic.gov.au"  # login pre-filled as <windows-user>@<domain>
 XLSX_MAGIC = b"PK\x03\x04"  # zip/xlsx file signature
+
+
+def _default_username() -> str:
+    """Pre-fill the login from whoever is running it (e.g. dperera -> dperera@vfmc.vic.gov.au)."""
+    return f"{getpass.getuser()}@{EMAIL_DOMAIN}"
 
 
 def _masked_input(prompt: str) -> str:
@@ -102,7 +108,7 @@ def _load_credentials() -> tuple[str, str]:
     one-time credential setup - it simply asks when a fresh login is required.
     """
     stored = keyring.get_password(KEYRING_SERVICE, KEYRING_USERNAME_KEY)
-    default_user = stored or DEFAULT_USERNAME
+    default_user = stored or _default_username()
     entered = input(f"Portal login email [{default_user}]: ").strip()
     username = entered or default_user
     password = _masked_input("Portal password: ")
