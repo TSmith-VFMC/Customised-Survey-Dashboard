@@ -178,7 +178,7 @@ def _download_export(page, debug: bool = False) -> bytes | None:
 
 
 def fetch_export(headless: bool = True, debug: bool = False) -> Path:
-    Path(AUTH_DIR).mkdir(exist_ok=True)
+    Path(AUTH_DIR).mkdir(parents=True, exist_ok=True)
 
     with sync_playwright() as p:
         ctx = p.chromium.launch_persistent_context(AUTH_DIR, headless=headless)
