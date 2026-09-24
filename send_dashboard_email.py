@@ -42,6 +42,7 @@ EMAIL_CONFIG = {
 
 def find_latest_pdf(source_dir: str, pattern: str) -> str:
     candidates = glob.glob(os.path.join(source_dir, pattern))
+    candidates += glob.glob(os.path.join(source_dir, "Archive", pattern))
     if not candidates:
         raise FileNotFoundError(f"No files matching {pattern!r} found in {source_dir}")
     return max(candidates, key=os.path.getmtime)
