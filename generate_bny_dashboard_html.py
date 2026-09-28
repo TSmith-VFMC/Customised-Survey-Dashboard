@@ -532,6 +532,8 @@ def build_html(m, xlsx_url, pdf_url):
   .tech-block-title {{ font-size:.8rem; font-weight:700; margin-bottom:6px; color:var(--navy); }}
   .tech-item {{ font-size:.75rem; line-height:1.45; color:var(--muted); margin-bottom:5px; }}
   .info-code {{ font-family:Consolas,'Courier New',monospace; background:#f1f5f9; padding:1px 5px; border-radius:4px; font-size:.72rem; color:var(--navy); }}
+  .dash-link {{ display:inline-block; margin-top:8px; padding:7px 12px; background:var(--navy); color:#fff; font-size:.76rem; font-weight:600; text-decoration:none; border-radius:6px; }}
+  .dash-link:hover {{ background:#0e1f39; }}
   @media print {{
     body {{ background:#fff; }}
     .app-shell {{ display:block; padding:0; max-width:none; }}
@@ -557,13 +559,21 @@ def build_html(m, xlsx_url, pdf_url):
     </div>
 
     <div class="info-card">
-      <div class="info-card-title">User Guide &ndash; Running the Dashboard</div>
-      <div class="guide-step"><div class="guide-num">1</div><div class="guide-text">Open the <strong>VFMC Daily Scorecard</strong> folder in File Explorer (synced from SharePoint/Teams).</div></div>
-      <div class="guide-step"><div class="guide-num">2</div><div class="guide-text">Double-click <span class="info-code">Run_BNY_Dashboard.bat</span>.</div></div>
-      <div class="guide-step"><div class="guide-num">3</div><div class="guide-text">It fetches the latest cases from the BNY (Eagle) portal. If your saved session has expired, it asks for your portal email (press <strong>Enter</strong> to accept the default) then your <strong>password</strong>.</div></div>
-      <div class="guide-step"><div class="guide-num">4</div><div class="guide-text">The dashboard runs: <em>fetch &rarr; HTML &rarr; PDF &rarr; archive</em>.</div></div>
-      <div class="guide-step"><div class="guide-num">5</div><div class="guide-text">This page opens automatically as the latest dashboard.</div></div>
-      <div class="guide-step"><div class="guide-num">6</div><div class="guide-text">The dated PDF and source data are moved to the <span class="info-code">Archive</span> subfolder &ndash; download links are in <strong>Appendix B</strong>.</div></div>
+      <div class="info-card-title">Dashboard Access</div>
+      <div class="tech-item">This dashboard can be accessed via the external BNY SharePoint site.</div>
+      <a class="dash-link" href="https://vfmcorp.sharepoint.com/sites/External-VFMCBNYMellon/Shared%20Documents/General/Operations/VFMC%20Daily%20Scorecard/BNY_Executive_Dashboard_Latest.html" target="_blank" rel="noopener">&#128202; Open the Dashboard</a>
+    </div>
+
+    <div class="info-card">
+      <div class="info-card-title">User Guide &ndash; Running the Dashboard to retrieve latest BNY Portal Ticket Data</div>
+      <div class="guide-step"><div class="guide-num">1</div><div class="guide-text">You must be logged into the <strong>Citizen Dev Box</strong> to fetch the data.</div></div>
+      <div class="guide-step"><div class="guide-num">2</div><div class="guide-text">Ensure the SharePoint and OneDrive have been synchronised (the <strong>3 dots</strong> selection, top-right corner of the SharePoint folder) &ndash; <a href="https://vfmcorp.sharepoint.com/:f:/r/sites/External-VFMCBNYMellon/Shared%20Documents/General/Operations/VFMC%20Daily%20Scorecard?d=wbdcc928896e14568a0a663a001bf4309&amp;csf=1&amp;web=1&amp;e=sxHdsF" target="_blank" rel="noopener">VFMC Daily Scorecard</a>.</div></div>
+      <div class="guide-step"><div class="guide-num">3</div><div class="guide-text">Open the <strong>VFMC Daily Scorecard</strong> folder in File Explorer (synced from SharePoint/Teams).</div></div>
+      <div class="guide-step"><div class="guide-num">4</div><div class="guide-text">Double-click <span class="info-code">Run_BNY_Dashboard.bat</span>.</div></div>
+      <div class="guide-step"><div class="guide-num">5</div><div class="guide-text">It fetches the latest cases from the BNY (Eagle) portal. If your saved session has expired, it asks for your portal email (press <strong>Enter</strong> to accept the default) then your <strong>password</strong>.</div></div>
+      <div class="guide-step"><div class="guide-num">6</div><div class="guide-text">The dashboard runs: <em>fetch &rarr; HTML &rarr; PDF &rarr; archive</em>.</div></div>
+      <div class="guide-step"><div class="guide-num">7</div><div class="guide-text">This page opens automatically as the latest dashboard.</div></div>
+      <div class="guide-step"><div class="guide-num">8</div><div class="guide-text">The dated PDF and source data are moved to the <span class="info-code">Archive</span> subfolder &ndash; download links are in <strong>Appendix B</strong>.</div></div>
     </div>
 
     <div class="info-card">
