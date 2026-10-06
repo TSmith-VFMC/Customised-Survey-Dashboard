@@ -48,3 +48,25 @@ mini line/sparkline, e.g. *"Score: 85 ▲ from 78 last run."*
 
 **Effort:** Medium.
 **Value:** High — adds trend/context that a point-in-time snapshot can't.
+
+---
+
+## Idea 3 — Automated email via Power Automate (Phase 1)
+
+**Goal:** Automatically email the latest dashboard PDF after each run, using a Power
+Automate **cloud flow** (no admin, no local Outlook, no stored credentials, no Task
+Scheduler).
+
+A cloud flow watches the SharePoint `Archive` folder with a **"When a file is created"**
+trigger, filters to the dashboard PDF, gets the file content, and sends it via
+**Send an email (V2)**.
+
+**Full step-by-step setup guide:** see
+[power-automate-email-flow.md](power-automate-email-flow.md).
+
+**Effort:** Low (built in the Power Automate web UI, ~6 steps).
+**Value:** Removes the manual emailing step.
+**Notes:** Phases 2–3 (automating the run itself on the Citizen Dev Box via Power Automate
+Desktop) are parked pending specialist sign-off on unattended portal login — covered in the
+same doc's roadmap.
+
