@@ -101,17 +101,16 @@ def set_credentials() -> None:
 
 
 def _load_credentials() -> tuple[str, str]:
-    """Resolve the portal login interactively.
+    """Resolve the portal login.
 
-    The username defaults to the stored value (or DEFAULT_USERNAME) so a run
-    just needs Enter to accept it; the password is always typed in at runtime
-    and never stored. This means the pipeline works on any machine without a
-    one-time credential setup - it simply asks when a fresh login is required.
+    The username is taken automatically from the stored value (or the Windows
+    user running the .bat) so there's nothing to type - only the password is
+    entered at runtime and never stored. This means the pipeline works on any
+    machine without a one-time credential setup.
     """
     stored = keyring.get_password(KEYRING_SERVICE, KEYRING_USERNAME_KEY)
-    default_user = stored or _default_username()
-    entered = input(f"Portal login email [{default_user}]: ").strip()
-    username = entered or default_user
+    username = stored or _default_username()
+    print(f"Portal login email: {username}")
     password = _masked_input("Portal password: ")
     if not password:
         raise RuntimeError("No password entered - aborting login.")
