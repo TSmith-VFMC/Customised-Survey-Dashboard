@@ -192,6 +192,7 @@ def watchlist_html(m):
         case_type = esc(str(r.get("Case Type", "") or ""))
         state = esc(str(r.get("State", "") or ""))
         submitted_by = esc(str(r.get("Submitted By", "") or ""))
+        assigned_to = esc(str(r.get("Assigned To", "") or ""))
         esc_flag = "Y" if r["State"] == "Escalation" else "N"
         rows.append(
             "<tr>"
@@ -203,12 +204,13 @@ def watchlist_html(m):
             f"<td>{case_type}</td>"
             f"<td>{state}</td>"
             f"<td>{submitted_by}</td>"
+            f"<td>{assigned_to}</td>"
             f"<td style='text-align:center'>{esc_flag}</td>"
             "</tr>"
         )
     return (
         '<table class="data watchlist"><thead><tr>'
-        "<th>Case</th><th>Priority</th><th>Days</th><th>RAG</th><th>Issue Summary</th><th>Case Type</th><th>State</th><th>Submitted By</th><th>Esc?</th>"
+        "<th>Case</th><th>Priority</th><th>Days</th><th>RAG</th><th>Issue Summary</th><th>Case Type</th><th>State</th><th>Submitted By</th><th>Assigned To</th><th>Esc?</th>"
         "</tr></thead><tbody>" + "".join(rows) + "</tbody></table>"
     )
 
@@ -376,6 +378,7 @@ def appendix_b_html(m, xlsx_url, pdf_url):
         state = esc(field(r, "State"))
         case_type = esc(field(r, "Case Type"))
         creator = esc(field(r, "Submitted By"))
+        assignee = esc(field(r, "Assigned To"))
         environment = esc(field(r, "Environment"))
         component = esc(field(r, "Component"))
         esc_flag = "Y" if r["State"] == "Escalation" else "N"
@@ -392,7 +395,7 @@ def appendix_b_html(m, xlsx_url, pdf_url):
             f"<td style='text-align:center'>{esc_flag}</td>"
             f"<td>{case_type}</td>"
             f"<td>{creator}</td>"
-            "<td>&mdash;</td>"
+            f"<td>{assignee}</td>"
             f"<td>{updated_txt}</td>"
             f"<td>{environment}</td>"
             f"<td>{component}</td>"
@@ -412,7 +415,6 @@ def appendix_b_html(m, xlsx_url, pdf_url):
         Downloads (archive):
         <a href="{pdf_url}" target="_blank" rel="noopener">PDF</a> &middot;
         <a href="{xlsx_url}" target="_blank" rel="noopener">source data ({esc(os.path.basename(xlsx_url))})</a>
-        &nbsp;(Assignee is not available via the automated export - shown as &mdash;.)
       </div>
       <div class="section-title">All open cases ({len(open_df)}) &ndash; sorted by age (oldest first), then priority</div>
       {table}

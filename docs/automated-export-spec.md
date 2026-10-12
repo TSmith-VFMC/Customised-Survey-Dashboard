@@ -23,7 +23,7 @@ GET https://xpclientportal.eagleinvsys.com/api/v1/tickets
     &sortBy=updatedAt
     &isDesc=1
     &selectedColumns=number,state,environment,sid,priority,shortDescription,
-                     openedAt,updatedAt,openedBy,customerNumber,caseType,
+                     openedAt,updatedAt,openedBy,assignedTo,customerNumber,caseType,
                      bugTrackerNumber,subcategory,customerKeyword,category,issueType
     &filterValues={}
 ```

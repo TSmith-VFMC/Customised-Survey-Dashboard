@@ -47,7 +47,7 @@ EXPORT_URL = (
     "https://xpclientportal.eagleinvsys.com/api/v1/tickets"
     "?export=EXCEL&sortBy=updatedAt&isDesc=1"
     "&selectedColumns=number%2Cstate%2Cenvironment%2Csid%2Cpriority%2CshortDescription"
-    "%2CopenedAt%2CupdatedAt%2CopenedBy%2CcustomerNumber%2CcaseType%2CbugTrackerNumber"
+    "%2CopenedAt%2CupdatedAt%2CopenedBy%2CassignedTo%2CcustomerNumber%2CcaseType%2CbugTrackerNumber"
     "%2Csubcategory%2CcustomerKeyword%2Ccategory&filterValues=%7B%7D"
 )
 LOGIN_SELECTORS = {
