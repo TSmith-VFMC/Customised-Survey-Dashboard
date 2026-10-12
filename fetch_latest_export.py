@@ -50,6 +50,15 @@ EXPORT_URL = (
     "%2CopenedAt%2CupdatedAt%2CopenedBy%2CassignedTo%2CcustomerNumber%2CcaseType%2CbugTrackerNumber"
     "%2Csubcategory%2CcustomerKeyword%2Ccategory&filterValues=%7B%7D"
 )
+# Known-good column set (no assignedTo). Used automatically if EXPORT_URL fails,
+# so an unsupported extra-column key can never leave the run with no download.
+EXPORT_URL_FALLBACK = (
+    "https://xpclientportal.eagleinvsys.com/api/v1/tickets"
+    "?export=EXCEL&sortBy=updatedAt&isDesc=1"
+    "&selectedColumns=number%2Cstate%2Cenvironment%2Csid%2Cpriority%2CshortDescription"
+    "%2CopenedAt%2CupdatedAt%2CopenedBy%2CcustomerNumber%2CcaseType%2CbugTrackerNumber"
+    "%2Csubcategory%2CcustomerKeyword%2Ccategory&filterValues=%7B%7D"
+)
 LOGIN_SELECTORS = {
     "username": "#username",
     "password": "#password",
@@ -150,14 +159,14 @@ def _visit_tickets_list(page, debug: bool = False) -> None:
         print(f"[debug] tickets list URL: {page.url}", file=sys.stderr)
 
 
-def _download_export(page, debug: bool = False) -> bytes | None:
+def _download_export(page, url: str, debug: bool = False) -> bytes | None:
     """Navigate to the export URL and capture the resulting file download,
     exactly as a real click on the export icon would. Returns None if the URL
     didn't trigger a download (e.g. it rendered an error page instead)."""
     try:
         with page.expect_download(timeout=15000) as download_info:
             try:
-                page.goto(EXPORT_URL)
+                page.goto(url)
             except PlaywrightError as exc:
                 # Direct navigation to a download link makes goto() reject
                 # with this message even though the download proceeds fine.
@@ -185,13 +194,20 @@ def fetch_export(headless: bool = True, debug: bool = False) -> Path:
             page = ctx.pages[0] if ctx.pages else ctx.new_page()
 
             _visit_tickets_list(page, debug=debug)
-            body = _download_export(page, debug=debug)
+            body = _download_export(page, EXPORT_URL, debug=debug)
             if body is None or not body.startswith(XLSX_MAGIC):
-                # Saved session has expired - prompt for login now.
+                # Extended-column request failed on the saved session. The extra
+                # column key may be unsupported, so retry the known-good set
+                # before assuming the session has expired.
+                body = _download_export(page, EXPORT_URL_FALLBACK, debug=debug)
+            if body is None or not body.startswith(XLSX_MAGIC):
+                # Both failed on the saved session - it has expired; log in now.
                 username, password = _load_credentials()
                 _login(page, username, password, debug=debug)
                 _visit_tickets_list(page, debug=debug)
-                body = _download_export(page, debug=debug)
+                body = _download_export(page, EXPORT_URL, debug=debug)
+                if body is None or not body.startswith(XLSX_MAGIC):
+                    body = _download_export(page, EXPORT_URL_FALLBACK, debug=debug)
 
             if body is None or not body.startswith(XLSX_MAGIC):
                 raise RuntimeError(

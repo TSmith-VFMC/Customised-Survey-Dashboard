@@ -465,15 +465,16 @@ def build_html(m, xlsx_url, pdf_url):
   table.data th {{ background:#f5f5f5; font-weight:700; }}
   table.watchlist {{ table-layout:fixed; font-size:.74rem; }}
   table.watchlist th, table.watchlist td {{ padding:5px 7px; word-wrap:break-word; overflow-wrap:break-word; }}
-  table.watchlist th:nth-child(1), table.watchlist td:nth-child(1) {{ width:10%; }}
-  table.watchlist th:nth-child(2), table.watchlist td:nth-child(2) {{ width:9%; }}
+  table.watchlist th:nth-child(1), table.watchlist td:nth-child(1) {{ width:9%; }}
+  table.watchlist th:nth-child(2), table.watchlist td:nth-child(2) {{ width:8%; }}
   table.watchlist th:nth-child(3), table.watchlist td:nth-child(3) {{ width:5%; }}
   table.watchlist th:nth-child(4), table.watchlist td:nth-child(4) {{ width:5%; }}
-  table.watchlist th:nth-child(5), table.watchlist td:nth-child(5) {{ width:27%; }}
-  table.watchlist th:nth-child(6), table.watchlist td:nth-child(6) {{ width:15%; }}
-  table.watchlist th:nth-child(7), table.watchlist td:nth-child(7) {{ width:12%; }}
+  table.watchlist th:nth-child(5), table.watchlist td:nth-child(5) {{ width:20%; }}
+  table.watchlist th:nth-child(6), table.watchlist td:nth-child(6) {{ width:13%; }}
+  table.watchlist th:nth-child(7), table.watchlist td:nth-child(7) {{ width:10%; }}
   table.watchlist th:nth-child(8), table.watchlist td:nth-child(8) {{ width:12%; }}
-  table.watchlist th:nth-child(9), table.watchlist td:nth-child(9) {{ width:5%; }}
+  table.watchlist th:nth-child(9), table.watchlist td:nth-child(9) {{ width:12%; }}
+  table.watchlist th:nth-child(10), table.watchlist td:nth-child(10) {{ width:6%; }}
   .pill {{ display:inline-block; min-width:20px; padding:2px 7px; border-radius:9999px; color:#fff; font-weight:700; font-size:.72rem; }}
   .callout {{ margin:6px 0 8px; font-size:.9rem; font-weight:700; color:#b45309; }}
   .driver-strip {{ margin-top:10px; font-size:.78rem; color:var(--muted); padding:8px 12px; background:#f8fafc; border-left:3px solid var(--amber); border-radius:4px; }}
