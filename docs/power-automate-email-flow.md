@@ -10,6 +10,34 @@ Citizen Dev Box) are parked pending specialist sign-off on unattended portal log
 
 ---
 
+## Copilot prompt (paste into Power Automate)
+
+At **make.powerautomate.com**, use **Create → Describe it to design it (Copilot)** and paste
+the block below. After it scaffolds the flow, manually wire the two attachment fields if left
+blank (see Step 5), and add the trigger condition from *Gotchas* if you get duplicate emails.
+
+> Create an **automated cloud flow** that emails a PDF when it lands in SharePoint.
+>
+> - **Trigger:** SharePoint – *When a file is created (properties only)*.
+>   - Site Address: `https://vfmcorp.sharepoint.com/sites/External-VFMCBNYMellon`
+>   - Library: `Documents`
+>   - Folder: `General/Operations/VFMC Daily Scorecard/Archive`
+> - **Condition:** only continue if the **File name with extension** *contains*
+>   `BNY_Executive_Dashboard_Services_` **and** *ends with* `.pdf`.
+> - **If yes → action 1:** SharePoint – *Get file content*, using the **Identifier** from the
+>   trigger (same site).
+> - **If yes → action 2:** Office 365 Outlook – *Send an email (V2)*.
+>   - To: `tsmith@vfmc.vic.gov.au`
+>   - Subject: `BNY Services Daily Scorecard`
+>   - Body: "Good morning, attached is the latest BNY Managed Data Services Executive Service
+>     Health dashboard, generated automatically from the Eagle client portal export."
+>   - Attachment Name: **File name with extension** (from the trigger)
+>   - Attachment Content: **File content** (from *Get file content*)
+>
+> Keep it a single flow, send the email as me (no stored credentials).
+
+---
+
 ## Background & design principle
 
 The solution splits cleanly into two parts:
