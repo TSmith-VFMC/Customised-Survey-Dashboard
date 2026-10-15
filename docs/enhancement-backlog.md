@@ -1,10 +1,16 @@
 # BNY Dashboard — Enhancement Backlog
 
-Tracked ideas for future enhancements to the dashboard app. Not yet started.
+Tracked ideas for future enhancements to the dashboard app. Ideas 1 & 2 shipped
+2026-10-15; Idea 3 and the quick wins below are parked.
 
 ---
 
-## Idea 1 — Embed into a SharePoint page or Teams tab
+## Idea 1 — Embed into a SharePoint page or Teams tab  ✅ DONE (code) · config optional
+
+**Status:** The **responsive screen layout** shipped (2026-10-15) — the report is now
+fluid-width on screen with A4 sizing applied only under `@media print`, so it embeds
+cleanly. The remaining part is pure **config (no code)**: add the Embed/File-viewer web
+part or Website/Teams tab pointing at the Latest HTML URL whenever you want it surfaced.
 
 **Goal:** Let people *view the dashboard in the browser* instead of opening the HTML file.
 
@@ -24,7 +30,7 @@ Tracked ideas for future enhancements to the dashboard app. Not yet started.
 
 ---
 
-## Idea 2 — High-value dashboard features
+## Idea 2 — High-value dashboard features  ✅ DONE (2026-10-15)
 
 ### 2a. Make Appendix B interactive on screen
 
@@ -69,4 +75,17 @@ trigger, filters to the dashboard PDF, gets the file content, and sends it via
 **Notes:** Phases 2–3 (automating the run itself on the Citizen Dev Box via Power Automate
 Desktop) are parked pending specialist sign-off on unattended portal login — covered in the
 same doc's roadmap.
+
+---
+
+## Parked — Quick wins
+
+Small UI niceties, parked by request (2026-10-15):
+
+- **Sidebar nav jump links** — clickable links in the Dashboard Guide pane that jump to each
+  page/section.
+- **Freshness badge** — a small "data as of … (N days ago)" badge computed client-side from
+  the embedded as-of date.
+- **Download/Print button** — *largely redundant:* the pipeline already generates the dated
+  PDF each run, so a manual print button adds little.
 
