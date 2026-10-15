@@ -16,6 +16,7 @@ Output:
     BNY_Executive_Dashboard_Services_<DDMMYYYY>.html written to the source dir.
 """
 
+import json
 import os
 from urllib.parse import quote
 
@@ -39,6 +40,10 @@ SHAREPOINT_FOLDER_URL = (
     "https://vfmcorp.sharepoint.com/sites/External-VFMCBNYMellon"
     "/Shared%20Documents/General/Operations/VFMC%20Daily%20Scorecard/"
 )
+
+# Rolling score history, written to the synced folder so the trend persists
+# across runs and users.
+HISTORY_FILE = "dashboard_history.json"
 
 
 def esc(text):
@@ -364,6 +369,173 @@ def appendix_html(m):
     """
 
 
+def _history_path():
+    return os.path.join(CONFIG["source_dir"], HISTORY_FILE)
+
+
+def load_history():
+    """Return recorded run snapshots (list of dicts), oldest first."""
+    path = _history_path()
+    if not os.path.exists(path):
+        return []
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            data = json.load(fh)
+        return data if isinstance(data, list) else []
+    except (json.JSONDecodeError, OSError):
+        return []
+
+
+def record_history(m, asof):
+    """Append (or replace) today's score snapshot, keyed by as-of date so a
+    re-run on the same day updates one entry instead of duplicating. Keeps the
+    most recent 60 runs."""
+    date_str = pd.Timestamp(asof).strftime("%Y-%m-%d")
+    entry = {
+        "date": date_str,
+        "score": int(m["score"]),
+        "backlog": int(m["backlog"]),
+        "p1": int(m["p1_open"]),
+        "agedP2": int(m["aged_p2"]),
+    }
+    history = [h for h in load_history() if h.get("date") != date_str]
+    history.append(entry)
+    history.sort(key=lambda h: h.get("date", ""))
+    history = history[-60:]
+    try:
+        with open(_history_path(), "w", encoding="utf-8") as fh:
+            json.dump(history, fh, indent=2)
+    except OSError:
+        pass
+    return history
+
+
+def svg_sparkline(scores, dot_color, width=210, height=46):
+    if len(scores) < 2:
+        return ""
+    pts = scores[-14:]
+    n = len(pts)
+    pad = 5
+    lo, hi = min(pts), max(pts)
+    rng = (hi - lo) or 1
+
+    def x(i):
+        return pad + (width - 2 * pad) * i / (n - 1)
+
+    def y(v):
+        return pad + (height - 2 * pad) * (1 - (v - lo) / rng)
+
+    line_pts = " ".join(f"{x(i):.1f},{y(v):.1f}" for i, v in enumerate(pts))
+    lx, ly = x(n - 1), y(pts[-1])
+    return (
+        f'<svg viewBox="0 0 {width} {height}" width="{width}" height="{height}" '
+        'role="img" aria-label="Attention score trend sparkline">'
+        f'<polyline points="{line_pts}" fill="none" stroke="#13294b" stroke-width="2"/>'
+        f'<circle cx="{lx:.1f}" cy="{ly:.1f}" r="3.5" fill="{dot_color}"/>'
+        "</svg>"
+    )
+
+
+def trend_html(m, history):
+    scores = [h["score"] for h in history if isinstance(h.get("score"), (int, float))]
+    band_hex = BAND_HEX[m["band"]]
+    spark = svg_sparkline(scores, band_hex)
+    if len(scores) >= 2:
+        prev, cur = scores[-2], scores[-1]
+        diff = cur - prev
+        if diff > 0:
+            arrow, col, txt = "&#9650;", "#16a34a", f"up {diff} from {prev}"
+        elif diff < 0:
+            arrow, col, txt = "&#9660;", "#dc2626", f"down {abs(diff)} from {prev}"
+        else:
+            arrow, col, txt = "&#8212;", "#5b6370", f"unchanged from {prev}"
+        delta = f'<span class="trend-delta" style="color:{col}">{arrow} {txt}</span> last run'
+    elif len(scores) == 1:
+        delta = '<span class="trend-note">First recorded run &ndash; the trend line builds from here.</span>'
+    else:
+        delta = '<span class="trend-note">No history recorded yet.</span>'
+    spark_html = f'<div class="trend-spark">{spark}</div>' if spark else ""
+    runs_txt = f'{len(scores)} run(s) recorded' if scores else ""
+    return (
+        '<div class="trend-block">'
+        f'<div class="trend-score" style="color:{band_hex}">{m["score"]}</div>'
+        '<div class="trend-meta">'
+        f'<div class="trend-line1">Management Attention Score &middot; {m["band"]}</div>'
+        f'<div class="trend-line2">{delta}</div>'
+        f'<div class="trend-line3">{runs_txt}</div>'
+        '</div>'
+        f'{spark_html}'
+        "</div>"
+    )
+
+
+# Screen-only search / sort / filter controls for the Appendix B open-case table.
+OB_TOOLBAR = (
+    '<div class="ob-toolbar">'
+    '<input type="text" id="obSearch" placeholder="Search case, subject, person\u2026" '
+    'oninput="obApplyFilters()" aria-label="Search open cases">'
+    '<select id="obRag" onchange="obApplyFilters()" aria-label="Filter by RAG">'
+    '<option value="">All RAG</option><option value="R">Red</option>'
+    '<option value="A">Amber</option><option value="G">Green</option></select>'
+    '<select id="obPriority" onchange="obApplyFilters()" aria-label="Filter by priority">'
+    '<option value="">All priorities</option><option value="P1">P1</option>'
+    '<option value="P2">P2</option><option value="P3">P3</option>'
+    '<option value="P4">P4</option></select>'
+    '<span class="ob-count" id="obCount"></span>'
+    '</div>'
+)
+
+OPEN_CASES_SCRIPT = """
+<script>
+(function(){
+  var table = document.getElementById('openCasesTable');
+  if(!table || !table.tBodies.length) return;
+  var tbody = table.tBodies[0];
+  var allRows = Array.prototype.slice.call(tbody.rows);
+  function byId(id){ return document.getElementById(id); }
+  window.obApplyFilters = function(){
+    var s = byId('obSearch'), r = byId('obRag'), p = byId('obPriority');
+    var q = (s && s.value || '').toLowerCase();
+    var rag = r && r.value || '';
+    var pri = p && p.value || '';
+    var shown = 0;
+    allRows.forEach(function(row){
+      if(row.getAttribute('data-empty')) return;
+      var ok = (!q || row.textContent.toLowerCase().indexOf(q) !== -1)
+        && (!rag || row.getAttribute('data-rag') === rag)
+        && (!pri || row.getAttribute('data-priority') === pri);
+      row.style.display = ok ? '' : 'none';
+      if(ok) shown++;
+    });
+    var c = byId('obCount');
+    if(c) c.textContent = shown + ' of ' + allRows.length + ' shown';
+  };
+  var headers = table.tHead ? table.tHead.rows[0].cells : [];
+  var current = {col:-1, dir:''};
+  function val(row, idx){ var c = row.cells[idx]; return c ? c.textContent.trim() : ''; }
+  Array.prototype.forEach.call(headers, function(th, idx){
+    th.classList.add('sortable');
+    th.addEventListener('click', function(){
+      var dir = (current.col === idx && current.dir === 'asc') ? 'desc' : 'asc';
+      current = {col: idx, dir: dir};
+      var rows = allRows.filter(function(r){ return !r.getAttribute('data-empty'); });
+      rows.sort(function(a, b){
+        var va = val(a, idx), vb = val(b, idx);
+        var na = parseFloat(va), nb = parseFloat(vb);
+        var cmp = (!isNaN(na) && !isNaN(nb)) ? (na - nb) : va.localeCompare(vb);
+        return dir === 'asc' ? cmp : -cmp;
+      });
+      rows.forEach(function(r){ tbody.appendChild(r); });
+      Array.prototype.forEach.call(headers, function(h){ h.removeAttribute('data-sort'); });
+      th.setAttribute('data-sort', dir);
+    });
+  });
+  window.obApplyFilters();
+})();
+</script>
+"""
+
+
 def appendix_b_html(m, xlsx_url, pdf_url):
     def field(r, col):
         val = r.get(col, "")
@@ -385,7 +557,7 @@ def appendix_b_html(m, xlsx_url, pdf_url):
         updated_dt = r.get("Updated_dt")
         updated_txt = updated_dt.strftime("%d %b %Y") if pd.notna(updated_dt) else esc(str(r.get("Updated", "") or ""))
         rows.append(
-            "<tr>"
+            f"<tr data-rag=\"{rag}\" data-priority=\"{esc(r['PriorityCode'])}\">"
             f"<td>{esc(r['Number'])}</td>"
             f"<td>{esc(r['Priority'])}</td>"
             f"<td style='text-align:center'>{r['Days Open']:.0f}</td>"
@@ -402,9 +574,9 @@ def appendix_b_html(m, xlsx_url, pdf_url):
             "</tr>"
         )
     if not rows:
-        rows.append("<tr><td colspan='13'>No open cases</td></tr>")
+        rows.append("<tr data-empty='1'><td colspan='13'>No open cases</td></tr>")
     table = (
-        '<table class="data open-cases"><thead><tr>'
+        '<table class="data open-cases" id="openCasesTable"><thead><tr>'
         "<th>Case</th><th>Priority</th><th>Days</th><th>RAG</th><th>Issue Summary</th><th>State</th>"
         "<th>Esc?</th><th>Case Type</th><th>Creator</th><th>Assignee</th><th>Update</th>"
         "<th>Environment</th><th>Component</th>"
@@ -417,12 +589,17 @@ def appendix_b_html(m, xlsx_url, pdf_url):
         <a href="{xlsx_url}" target="_blank" rel="noopener">source data ({esc(os.path.basename(xlsx_url))})</a>
       </div>
       <div class="section-title">All open cases ({len(open_df)}) &ndash; sorted by age (oldest first), then priority</div>
+      {OB_TOOLBAR}
       {table}
+      {OPEN_CASES_SCRIPT}
     """
 
 
-def build_html(m, xlsx_url, pdf_url):
+def build_html(m, xlsx_url, pdf_url, history=None):
     asof_str = m["asof"].strftime("%d %b %Y")
+    if history is None:
+        history = load_history()
+    trend = trend_html(m, history)
     line = svg_line_chart(m["week_labels"], m["mttr_p1"], m["mttr_p2"], CONFIG["mttr_outlier_cap_days"])
     bars = svg_bar_chart(
         ["P1", "P2 High", "P3 Moderate", "P4 Low", "RCA Pending"],
@@ -443,7 +620,7 @@ def build_html(m, xlsx_url, pdf_url):
   }}
   * {{ box-sizing:border-box; margin:0; padding:0; }}
   body {{ font-family:'Segoe UI',-apple-system,Roboto,sans-serif; background:var(--bg); color:var(--text); }}
-  .page {{ max-width:1180px; margin:24px auto; background:var(--surface); box-shadow:0 4px 12px rgba(0,0,0,.08); }}
+  .page {{ max-width:100%; margin:24px auto; background:var(--surface); box-shadow:0 4px 12px rgba(0,0,0,.08); }}
   .page + .page {{ margin-top:32px; }}
   .header {{ background:var(--navy); color:#fff; padding:16px 28px; }}
   .header h1 {{ font-size:1.35rem; font-weight:700; }}
@@ -507,6 +684,25 @@ def build_html(m, xlsx_url, pdf_url):
   table.open-cases th:nth-child(11), table.open-cases td:nth-child(11) {{ width:7%; }}
   table.open-cases th:nth-child(12), table.open-cases td:nth-child(12) {{ width:8%; }}
   table.open-cases th:nth-child(13), table.open-cases td:nth-child(13) {{ width:8%; }}
+  /* Attention Score trend block (Idea 2b) */
+  .trend-block {{ display:flex; align-items:center; gap:18px; flex-wrap:wrap; border:1px solid var(--border); border-radius:8px; padding:12px 16px; margin-bottom:14px; background:#f8fafc; }}
+  .trend-score {{ font-size:2rem; font-weight:800; line-height:1; }}
+  .trend-meta {{ flex:1; min-width:180px; }}
+  .trend-line1 {{ font-size:.82rem; font-weight:700; }}
+  .trend-line2 {{ font-size:.8rem; margin-top:3px; }}
+  .trend-delta {{ font-weight:800; }}
+  .trend-line3 {{ font-size:.68rem; color:var(--muted); margin-top:3px; }}
+  .trend-note {{ font-size:.78rem; color:var(--muted); }}
+  .trend-spark {{ flex-shrink:0; }}
+  /* Appendix B interactive controls (Idea 2a) */
+  .ob-toolbar {{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:10px; }}
+  .ob-toolbar input, .ob-toolbar select {{ font:inherit; font-size:.8rem; padding:6px 10px; border:1px solid var(--border); border-radius:6px; background:#fff; color:var(--text); }}
+  .ob-toolbar input {{ flex:1; min-width:200px; }}
+  .ob-count {{ font-size:.72rem; color:var(--muted); }}
+  table.open-cases th.sortable {{ cursor:pointer; user-select:none; }}
+  table.open-cases th.sortable:hover {{ background:#ececec; }}
+  table.open-cases th[data-sort="asc"]::after {{ content:" \u2191"; font-weight:700; }}
+  table.open-cases th[data-sort="desc"]::after {{ content:" \u2193"; font-weight:700; }}
   /* On-screen info pane (hidden when printing / in the PDF) */
   .app-shell {{ display:flex; gap:22px; max-width:1520px; margin:0 auto; padding:24px 18px; align-items:flex-start; }}
   .pages-wrap {{ flex:1; min-width:0; }}
@@ -537,6 +733,15 @@ def build_html(m, xlsx_url, pdf_url):
   .info-code {{ font-family:Consolas,'Courier New',monospace; background:#f1f5f9; padding:1px 5px; border-radius:4px; font-size:.72rem; color:var(--navy); }}
   .dash-link {{ display:inline-block; margin-top:8px; padding:7px 12px; background:var(--navy); color:#fff; font-size:.76rem; font-weight:600; text-decoration:none; border-radius:6px; }}
   .dash-link:hover {{ background:#0e1f39; }}
+  /* Responsive screen layout (Idea 1) - A4 sizing stays under @media print */
+  @media screen and (max-width:1024px) {{
+    .app-shell {{ flex-direction:column; max-width:100%; padding:14px; }}
+    .info-pane {{ width:100%; position:static; max-height:none; flex-direction:row; flex-wrap:wrap; }}
+    .info-pane .info-card {{ flex:1 1 240px; }}
+    .info-pane-head {{ width:100%; }}
+    .pages-wrap {{ width:100%; }}
+    .page {{ max-width:100%; }}
+  }}
   @media print {{
     body {{ background:#fff; }}
     .app-shell {{ display:block; padding:0; max-width:none; }}
@@ -544,6 +749,8 @@ def build_html(m, xlsx_url, pdf_url):
     .pages-wrap .page {{ margin:0; }}
     .page {{ box-shadow:none; margin:0; max-width:none; page-break-after:always; }}
     .page:last-child {{ page-break-after:auto; }}
+    .ob-toolbar {{ display:none !important; }}
+    table.open-cases th.sortable {{ cursor:default; }}
     @page {{ size:A4 landscape; margin:8mm; }}
   }}
 </style>
@@ -659,6 +866,8 @@ def build_html(m, xlsx_url, pdf_url):
           <div class="chart-note">RCA Pending (purple) are open cases parked awaiting root-cause analysis &ndash; excluded from the other priority bars and the score.</div>
         </div>
       </div>
+      <div class="section-title">Attention Score Trend</div>
+      {trend}
       <div class="section-title">Management Attention Score</div>
       {scoring_html(m)}
       <div class="section-title" style="margin-top:22px">Pending RCA &ndash; Root Cause Analysis in Progress ({m['rca_pending']})</div>
@@ -708,11 +917,13 @@ def main():
     df = load_cases(source_path)
     m = compute_metrics(df, asof)
 
+    history = record_history(m, asof)
+
     archive_url = SHAREPOINT_FOLDER_URL + "Archive/"
     xlsx_url = archive_url + quote(os.path.basename(source_path))
     pdf_name = f'BNY_Executive_Dashboard_Services_{asof.strftime("%Y-%m-%d")}.pdf'
     pdf_url = archive_url + quote(pdf_name)
-    html = build_html(m, xlsx_url, pdf_url)
+    html = build_html(m, xlsx_url, pdf_url, history=history)
     out_name = "BNY_Executive_Dashboard_Latest.html"
     out_path = os.path.join(CONFIG["source_dir"], out_name)
     with open(out_path, "w", encoding="utf-8") as fh:

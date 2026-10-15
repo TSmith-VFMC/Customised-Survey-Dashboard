@@ -27,7 +27,7 @@ from generate_bny_dashboard import (
     load_cases,
     parse_asof_from_filename,
 )
-from generate_bny_dashboard_html import SHAREPOINT_FOLDER_URL, build_html
+from generate_bny_dashboard_html import SHAREPOINT_FOLDER_URL, build_html, load_history
 
 
 def render_pdf(html: str, out_path: str) -> None:
@@ -55,7 +55,7 @@ def main():
     xlsx_url = archive_url + quote(os.path.basename(source_path))
     out_name = f'BNY_Executive_Dashboard_Services_{asof.strftime("%Y-%m-%d")}.pdf'
     pdf_url = archive_url + quote(out_name)
-    html = build_html(m, xlsx_url, pdf_url)
+    html = build_html(m, xlsx_url, pdf_url, history=load_history())
     out_path = os.path.join(CONFIG["source_dir"], out_name)
     render_pdf(html, out_path)
     print(f"Saved: {out_path}")
