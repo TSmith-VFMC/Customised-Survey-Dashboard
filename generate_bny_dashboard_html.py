@@ -373,11 +373,18 @@ def _history_path():
     return os.path.join(CONFIG["source_dir"], HISTORY_FILE)
 
 
-def load_history():
-    """Return recorded run snapshots (list of dicts), oldest first."""
-    path = _history_path()
-    if not os.path.exists(path):
-        return []
+def _conflict_copies():
+    """OneDrive conflict copies of the history file, e.g.
+    'dashboard_history-CPC-tsmit-KCWU8.json', created when more than one
+    machine/user writes the shared file. Returns their full paths."""
+    import glob
+
+    stem = HISTORY_FILE[: -len(".json")]
+    pattern = os.path.join(CONFIG["source_dir"], f"{stem}-*.json")
+    return sorted(glob.glob(pattern))
+
+
+def _read_history_file(path):
     try:
         with open(path, "r", encoding="utf-8") as fh:
             data = json.load(fh)
@@ -386,10 +393,33 @@ def load_history():
         return []
 
 
+def _merge_snapshots(*snapshot_lists):
+    """Merge snapshot lists by date (one entry per day), newest kept last.
+    Earlier lists win on a date clash, so pass the authoritative file first."""
+    by_date = {}
+    for snaps in snapshot_lists:
+        for entry in snaps:
+            date = entry.get("date")
+            if date and date not in by_date:
+                by_date[date] = entry
+    merged = sorted(by_date.values(), key=lambda h: h.get("date", ""))
+    return merged[-60:]
+
+
+def load_history():
+    """Return recorded run snapshots (list of dicts), oldest first. Also folds
+    in any OneDrive conflict copies so the trend is complete even before the
+    next write cleans them up."""
+    main = _read_history_file(_history_path())
+    copies = [_read_history_file(p) for p in _conflict_copies()]
+    return _merge_snapshots(main, *copies)
+
+
 def record_history(m, asof):
     """Append (or replace) today's score snapshot, keyed by as-of date so a
-    re-run on the same day updates one entry instead of duplicating. Keeps the
-    most recent 60 runs."""
+    re-run on the same day updates one entry instead of duplicating. Merges in
+    any OneDrive conflict copies, writes the combined file, then deletes the
+    stray copies so they stop accumulating. Keeps the most recent 60 runs."""
     date_str = pd.Timestamp(asof).strftime("%Y-%m-%d")
     entry = {
         "date": date_str,
@@ -398,16 +428,23 @@ def record_history(m, asof):
         "p1": int(m["p1_open"]),
         "agedP2": int(m["aged_p2"]),
     }
-    history = [h for h in load_history() if h.get("date") != date_str]
-    history.append(entry)
-    history.sort(key=lambda h: h.get("date", ""))
-    history = history[-60:]
+    copies = _conflict_copies()
+    merged = _merge_snapshots(
+        [entry],
+        _read_history_file(_history_path()),
+        *[_read_history_file(p) for p in copies],
+    )
     try:
         with open(_history_path(), "w", encoding="utf-8") as fh:
-            json.dump(history, fh, indent=2)
+            json.dump(merged, fh, indent=2)
     except OSError:
-        pass
-    return history
+        return merged
+    for path in copies:
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+    return merged
 
 
 def svg_sparkline(scores, dot_color, width=210, height=46):
@@ -595,8 +632,36 @@ def appendix_b_html(m, xlsx_url, pdf_url):
     """
 
 
+def _freshness(asof):
+    """Return (age_days, is_stale, badge_html, banner_html) comparing the export
+    date to today, so an expired-session run that silently reused an old export
+    can't pass unnoticed."""
+    asof_date = pd.Timestamp(asof).normalize()
+    today = pd.Timestamp.now().normalize()
+    age_days = int((today - asof_date).days)
+    asof_str = asof_date.strftime("%d %b %Y")
+    if age_days <= 0:
+        badge = f'<span class="fresh-badge fresh-ok">&#10003; Data current &middot; {asof_str}</span>'
+        return age_days, False, badge, ""
+    day_word = "day" if age_days == 1 else "days"
+    badge = (
+        f'<span class="fresh-badge fresh-stale">&#9888; Data is {age_days} {day_word} old '
+        f"&middot; as at {asof_str}</span>"
+    )
+    banner = (
+        '<div class="stale-banner">&#9888; <strong>Stale data warning:</strong> '
+        f"this dashboard was built from an export dated <strong>{asof_str}</strong> "
+        f"({age_days} {day_word} old), not today. The automated portal fetch likely "
+        "failed (expired login session) and the run fell back to the last saved export. "
+        "Re-run <strong>Run_BNY_Dashboard.bat</strong> and sign in to the portal when "
+        "prompted to refresh the data.</div>"
+    )
+    return age_days, True, badge, banner
+
+
 def build_html(m, xlsx_url, pdf_url, history=None):
     asof_str = m["asof"].strftime("%d %b %Y")
+    _age_days, _is_stale, fresh_badge, stale_banner = _freshness(m["asof"])
     if history is None:
         history = load_history()
     trend = trend_html(m, history)
@@ -625,6 +690,10 @@ def build_html(m, xlsx_url, pdf_url, history=None):
   .header {{ background:var(--navy); color:#fff; padding:16px 28px; }}
   .header h1 {{ font-size:1.35rem; font-weight:700; }}
   .header .sub {{ font-size:.8rem; color:#c7d2e0; margin-top:2px; }}
+  .fresh-badge {{ display:inline-block; margin-top:6px; padding:3px 10px; border-radius:9999px; font-size:.72rem; font-weight:700; }}
+  .fresh-ok {{ background:rgba(22,163,74,.18); color:#bbf7d0; border:1px solid rgba(22,163,74,.5); }}
+  .fresh-stale {{ background:rgba(220,38,38,.2); color:#fecaca; border:1px solid rgba(220,38,38,.6); }}
+  .stale-banner {{ margin:0 0 14px; padding:11px 14px; border-radius:8px; background:#fef2f2; border:1px solid #fecaca; border-left:4px solid var(--red); color:#991b1b; font-size:.82rem; line-height:1.45; }}
   .body {{ padding:16px 28px 20px; }}
   .kpi-row {{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }}
   .kpi {{ border-radius:8px; padding:7px 12px; min-height:48px; display:flex; flex-direction:column; justify-content:space-between; }}
@@ -826,8 +895,10 @@ def build_html(m, xlsx_url, pdf_url, history=None):
     <div class="header">
       <h1>BNY Managed Data Services &ndash; Executive Service Health</h1>
       <div class="sub">Point-in-time daily view | As at {asof_str}</div>
+      <div>{fresh_badge}</div>
     </div>
     <div class="body">
+      {stale_banner}
       <div class="grid2">
         <div class="risk-matrix-block">
           <div class="section-title">Priority &times; Age Risk Matrix</div>
