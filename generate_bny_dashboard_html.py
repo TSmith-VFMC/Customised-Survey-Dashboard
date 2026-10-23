@@ -638,9 +638,13 @@ AI_ASSISTANT_SCRIPT = """
     "What are the repeat incident themes and what root-cause actions do they suggest?"
   ];
   function preamble(){
-    return "You are a service-delivery analyst assistant for the BNY Managed Data Services daily dashboard. "
-      + "Answer using ONLY the dashboard data below (as at " + c.asOf + "). If the answer is not in the data, say so. "
-      + "Be concise and executive-ready. For row-level detail you may refer the reader to the linked Excel export.\\n\\n"
+    return "You are a service-delivery analyst assistant for the BNY Managed Data Services daily dashboard.\\n"
+      + "STRICT GROUNDING RULES - follow exactly:\\n"
+      + "1. Answer using ONLY the DASHBOARD DATA (JSON) provided below, which is current as at " + c.asOf + ".\\n"
+      + "2. Do NOT use any outside, general, web, training or other organisational knowledge, and do NOT guess or infer beyond what the data states.\\n"
+      + "3. If the answer cannot be found in the data below, reply exactly: \\\"That information isn't in today's dashboard data.\\\"\\n"
+      + "4. You may point the reader to the linked Excel export (in the data) for row-level detail, but every statement you make must be supported by the data below.\\n"
+      + "Be concise and executive-ready.\\n\\n"
       + "DASHBOARD DATA (JSON):\\n" + JSON.stringify(c, null, 2) + "\\n\\n";
   }
   function buildPrompt(q){ return preamble() + "QUESTION:\\n" + q; }
@@ -693,6 +697,16 @@ AI_ASSISTANT_SCRIPT = """
     var box = byId('aiFallback');
     if(box){ box.style.display = 'none'; }
   }
+  function showStatus(html){
+    var s = byId('aiStatus');
+    if(!s) return;
+    s.innerHTML = html;
+    s.style.display = 'block';
+  }
+  function hideStatus(){
+    var s = byId('aiStatus');
+    if(s){ s.style.display = 'none'; }
+  }
   function currentQuestion(){
     var el = byId('aiQuestion');
     return (el && el.value || '').trim();
@@ -706,8 +720,15 @@ AI_ASSISTANT_SCRIPT = """
     if(!q){ toast('Type a question or pick a standard prompt first'); return; }
     var promptText = buildPrompt(q);
     copyText(promptText).then(function(ok){
-      if(ok){ hideManual(); toast('Prompt copied \\u2013 paste into Copilot (Ctrl+V)'); }
-      else { showManual(promptText); toast('Couldn\\u2019t auto-copy \\u2013 select the text below and press Ctrl+C'); }
+      if(ok){
+        hideManual();
+        showStatus('<strong>&#10003; Prompt copied.</strong> Open Microsoft Copilot, click its message box, press <strong>Ctrl+V</strong> then <strong>Enter</strong>.');
+        toast('Prompt copied');
+      } else {
+        hideStatus();
+        showManual(promptText);
+        toast('Couldn\\u2019t auto-copy \\u2013 select the text below and press Ctrl+C');
+      }
     });
   };
   window.aiAsk = function(){
@@ -717,9 +738,11 @@ AI_ASSISTANT_SCRIPT = """
     copyText(promptText).then(function(ok){
       if(ok){
         hideManual();
-        toast('Prompt copied \\u2013 opening Copilot, paste with Ctrl+V');
+        showStatus('<strong>&#10003; Prompt copied &amp; Copilot opened in a new tab.</strong> Switch to that tab, click the message box, press <strong>Ctrl+V</strong> then <strong>Enter</strong> to get your answer.');
+        toast('Prompt copied \\u2013 now paste into Copilot (Ctrl+V)');
         window.open(COPILOT_URL, '_blank', 'noopener');
       } else {
+        hideStatus();
         showManual(promptText);
         toast('Couldn\\u2019t auto-copy \\u2013 copy the text below, then click Open Copilot');
       }
@@ -1009,6 +1032,8 @@ def build_html(m, xlsx_url, pdf_url, history=None):
   .ai-btn-primary:hover {{ background:#0e1f39; }}
   .ai-btn-ghost {{ background:#f1f5f9; color:var(--text); border:1px solid var(--border); }}
   .ai-note {{ font-size:.68rem; color:var(--muted); margin-top:10px; line-height:1.4; }}
+  .ai-status {{ display:none; margin-top:11px; padding:10px 12px; border-radius:8px; background:#ecfdf5; border:1px solid #a7f3d0; border-left:4px solid var(--green); color:#065f46; font-size:.78rem; line-height:1.45; }}
+  .ai-status strong {{ color:#064e3b; }}
   .ai-fallback textarea {{ width:100%; min-height:96px; resize:vertical; font-family:Consolas,'Courier New',monospace; font-size:.68rem; padding:9px 11px; border:1px solid var(--border); border-radius:8px; margin-bottom:8px; }}
   .ai-open-link {{ display:block; text-align:center; text-decoration:none; }}
   .ai-toast {{ position:fixed; right:22px; top:76px; z-index:60; background:var(--green); color:#fff; padding:10px 14px; border-radius:8px; font-size:.78rem; font-weight:600; box-shadow:0 6px 18px rgba(0,0,0,.25); opacity:0; transform:translateY(-8px); transition:opacity .2s, transform .2s; pointer-events:none; }}
@@ -1203,6 +1228,7 @@ def build_html(m, xlsx_url, pdf_url, history=None):
         <button class="ai-btn ai-btn-ghost" onclick="aiCopy()">Copy prompt</button>
       </div>
       <div class="ai-note">Copilot opens in a new tab &ndash; paste the prompt with Ctrl+V if it isn't already filled in.</div>
+      <div class="ai-status" id="aiStatus"></div>
       <div class="ai-fallback" id="aiFallback" style="display:none">
         <div class="ai-ask-title" style="margin-top:12px">Manual copy (auto-copy was blocked)</div>
         <textarea id="aiPromptOut" readonly aria-label="Generated prompt to copy"></textarea>
