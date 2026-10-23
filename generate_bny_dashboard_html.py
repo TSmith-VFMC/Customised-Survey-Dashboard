@@ -942,9 +942,9 @@ def build_html(m, xlsx_url, pdf_url, history=None):
     .page {{ max-width:100%; }}
   }}
   /* "Ask AI" assistant (screen only) */
-  .ai-fab {{ position:fixed; right:22px; bottom:22px; z-index:50; background:var(--navy); color:#fff; border:none; border-radius:9999px; padding:12px 18px; font:inherit; font-size:.85rem; font-weight:700; box-shadow:0 6px 18px rgba(0,0,0,.25); cursor:pointer; display:flex; align-items:center; gap:8px; }}
+  .ai-fab {{ position:fixed; right:22px; top:22px; z-index:50; background:var(--navy); color:#fff; border:none; border-radius:9999px; padding:12px 18px; font:inherit; font-size:.85rem; font-weight:700; box-shadow:0 6px 18px rgba(0,0,0,.25); cursor:pointer; display:flex; align-items:center; gap:8px; }}
   .ai-fab:hover {{ background:#0e1f39; }}
-  .ai-panel {{ position:fixed; right:22px; bottom:76px; z-index:50; width:360px; max-width:calc(100vw - 44px); max-height:calc(100vh - 110px); background:var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow:0 12px 36px rgba(0,0,0,.28); display:none; flex-direction:column; overflow:hidden; }}
+  .ai-panel {{ position:fixed; right:22px; top:76px; z-index:50; width:360px; max-width:calc(100vw - 44px); max-height:calc(100vh - 110px); background:var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow:0 12px 36px rgba(0,0,0,.28); display:none; flex-direction:column; overflow:hidden; }}
   .ai-panel.open {{ display:flex; }}
   .ai-head {{ background:var(--navy); color:#fff; padding:13px 16px; display:flex; align-items:center; gap:10px; }}
   .ai-head h3 {{ font-size:.95rem; font-weight:700; flex:1; }}
@@ -962,7 +962,7 @@ def build_html(m, xlsx_url, pdf_url, history=None):
   .ai-btn-primary:hover {{ background:#0e1f39; }}
   .ai-btn-ghost {{ background:#f1f5f9; color:var(--text); border:1px solid var(--border); }}
   .ai-note {{ font-size:.68rem; color:var(--muted); margin-top:10px; line-height:1.4; }}
-  .ai-toast {{ position:fixed; right:22px; bottom:76px; z-index:60; background:var(--green); color:#fff; padding:10px 14px; border-radius:8px; font-size:.78rem; font-weight:600; box-shadow:0 6px 18px rgba(0,0,0,.25); opacity:0; transform:translateY(8px); transition:opacity .2s, transform .2s; pointer-events:none; }}
+  .ai-toast {{ position:fixed; right:22px; top:76px; z-index:60; background:var(--green); color:#fff; padding:10px 14px; border-radius:8px; font-size:.78rem; font-weight:600; box-shadow:0 6px 18px rgba(0,0,0,.25); opacity:0; transform:translateY(-8px); transition:opacity .2s, transform .2s; pointer-events:none; }}
   .ai-toast.show {{ opacity:1; transform:translateY(0); }}
   @media print {{
     body {{ background:#fff; }}
