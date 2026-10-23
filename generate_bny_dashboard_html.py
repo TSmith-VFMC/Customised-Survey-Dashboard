@@ -590,6 +590,7 @@ def _ai_context(m, xlsx_url, pdf_url):
             "subject": str(r["Subject"]),
             "state": "" if pd.isna(r.get("State", "")) else str(r.get("State", "")),
             "assignedTo": "" if pd.isna(r.get("Assigned To", "")) else str(r.get("Assigned To", "")),
+            "pendingRca": bool(r.get("PendingRCA", False)),
         }
 
     open_df = m["open_df"]
@@ -711,6 +712,132 @@ AI_ASSISTANT_SCRIPT = """
     var el = byId('aiQuestion');
     return (el && el.value || '').trim();
   }
+  // ---- In-page answer engine: replies using ONLY window.BNY_CONTEXT ----
+  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function caseLine(x){
+    var who = x.assignedTo ? (' \\u2013 ' + esc(x.assignedTo)) : '';
+    var st = x.state ? (', ' + esc(x.state)) : '';
+    return '<strong>' + esc(x.case) + '</strong> (' + esc(x.priority) + ', ' + x.daysOpen + 'd' + st + who + '): ' + esc(x.subject);
+  }
+  function ansSummary(){
+    var ob = c.openByPriority || {};
+    var top = (c.executiveWatchlistTop5 || [])[0];
+    var h = '<ul>';
+    h += '<li><strong>Management Attention Score ' + c.managementAttentionScore + ' (' + esc(c.band) + ')</strong> as at ' + esc(c.asOf) + ' \\u2013 ' + (100 - c.managementAttentionScore) + ' points deducted from 100.</li>';
+    h += '<li><strong>' + c.backlogOpenCases + ' open cases</strong> (P1 ' + (ob.P1||0) + ', P2 ' + (ob.P2||0) + ', P3 ' + (ob.P3||0) + ', P4 ' + (ob.P4||0) + '); ' + c.p1Open + ' P1 open, ' + c.agedP2 + ' aged P2 over 30 days.</li>';
+    if(top){ h += '<li><strong>Top risk:</strong> ' + caseLine(top) + '</li>'; }
+    h += '</ul>';
+    return h;
+  }
+  function ansScore(){
+    var h = '<p>The Management Attention Score is <strong>' + c.managementAttentionScore + '</strong> (' + esc(c.band) + ') \\u2013 100 minus ' + (100 - c.managementAttentionScore) + ' points of deductions from open cases:</p><ul>';
+    (c.scoreDrivers || []).forEach(function(d){ h += '<li>' + esc(d) + '</li>'; });
+    h += '</ul>';
+    return h;
+  }
+  function ansRisks(n){
+    var list = (c.executiveWatchlistTop5 || []).slice(0, n || 3);
+    if(!list.length){ return '<p>No watchlist items in today\\u2019s data.</p>'; }
+    var h = '<p>Top ' + list.length + ' risks right now (priority, then age):</p><ol>';
+    list.forEach(function(x){ h += '<li>' + caseLine(x) + '</li>'; });
+    h += '</ol>';
+    return h;
+  }
+  function ansEmail(){
+    var top = (c.executiveWatchlistTop5 || []).slice(0, 3);
+    var lines = top.map(function(x){ return '- ' + x.case + ' (' + x.priority + ', ' + x.daysOpen + 'd): ' + x.subject; }).join('\\n');
+    var body = 'Subject: BNY Managed Data Services \\u2013 Daily Service Update (' + c.asOf + ')\\n\\n'
+      + 'Hi all,\\n\\n'
+      + 'Today\\u2019s service position: Management Attention Score ' + c.managementAttentionScore + ' (' + c.band + '). '
+      + 'There are ' + c.backlogOpenCases + ' open cases (' + c.p1Open + ' P1, ' + c.agedP2 + ' aged P2 over 30 days).\\n\\n'
+      + 'Key items we are focused on:\\n' + (lines || '- None') + '\\n\\n'
+      + 'We will continue to prioritise the above and provide a further update tomorrow.\\n\\nRegards,';
+    return '<p>Draft status email (editable):</p><textarea class="ai-draft" readonly>' + esc(body) + '</textarea>';
+  }
+  function ansThemes(){
+    var th = c.repeatThemes || [];
+    if(!th.length){ return '<p>No repeat incident themes in today\\u2019s data.</p>'; }
+    var h = '<p>Repeat incident themes (historical occurrences / open now):</p><ul>';
+    th.forEach(function(t){ h += '<li><strong>' + esc(t.theme) + '</strong> \\u2013 ' + t.historicalOccurrences + ' historical, ' + t.openNow + ' open now.</li>'; });
+    h += '</ul><p class="ai-sub">Suggested focus: prioritise a root-cause review on the highest-recurrence themes and confirm permanent fixes are tracked to closure.</p>';
+    return h;
+  }
+  function ansP1(){
+    var all = (c.openCases || []).filter(function(x){ return /critical/i.test(x.priority); });
+    var active = all.filter(function(x){ return !x.pendingRca; });
+    var rca = all.filter(function(x){ return x.pendingRca; });
+    var h = '<p>There ' + (c.p1Open === 1 ? 'is' : 'are') + ' <strong>' + c.p1Open + ' open P1</strong> (Critical) case' + (c.p1Open === 1 ? '' : 's') + ' in the attention score:</p><ul>';
+    active.forEach(function(x){ h += '<li>' + caseLine(x) + '</li>'; });
+    h += '</ul>';
+    if(rca.length){
+      h += '<p class="ai-sub">Plus ' + rca.length + ' P1 case' + (rca.length === 1 ? '' : 's') + ' parked pending RCA (excluded from the score):</p><ul>';
+      rca.forEach(function(x){ h += '<li>' + caseLine(x) + '</li>'; });
+      h += '</ul>';
+    }
+    return h;
+  }
+  function ansAgedP2(){
+    var all = (c.openCases || []).filter(function(x){ return /high/i.test(x.priority) && x.daysOpen > 30; });
+    var active = all.filter(function(x){ return !x.pendingRca; });
+    var h = '<p>There ' + (c.agedP2 === 1 ? 'is' : 'are') + ' <strong>' + c.agedP2 + ' aged P2</strong> (High priority, open over 30 days):</p><ul>';
+    active.forEach(function(x){ h += '<li>' + caseLine(x) + '</li>'; });
+    h += '</ul>';
+    return h;
+  }
+  function ansBacklog(){
+    var ob = c.openByPriority || {};
+    var h = '<p><strong>' + c.backlogOpenCases + ' open cases</strong> as at ' + esc(c.asOf) + ':</p><ul>'
+      + '<li>P1 Critical: ' + (ob.P1||0) + '</li>'
+      + '<li>P2 High: ' + (ob.P2||0) + '</li>'
+      + '<li>P3 Moderate: ' + (ob.P3||0) + '</li>'
+      + '<li>P4 Low: ' + (ob.P4||0) + '</li></ul>';
+    if(c.rcaPendingExcluded){ h += '<p class="ai-sub">' + c.rcaPendingExcluded + ' further case' + (c.rcaPendingExcluded === 1 ? ' is' : 's are') + ' parked pending RCA and excluded from these figures.</p>'; }
+    return h;
+  }
+  function ansMttr(){
+    var t = c.mttrTrend || {}, per = t.periods || [], p1 = t.p1Days || [], p2 = t.p2Days || [];
+    if(!per.length){ return '<p>No MTTR trend data in today\\u2019s data.</p>'; }
+    var i = per.length - 1;
+    return '<p>Median time-to-resolve (most recent period, ' + esc(per[i]) + '):</p><ul>'
+      + '<li>P1 Critical: ' + p1[i] + ' days</li>'
+      + '<li>P2 High: ' + p2[i] + ' days</li></ul>';
+  }
+  function answerLocally(q){
+    var s = (q || '').toLowerCase();
+    function has(){ for(var i=0;i<arguments.length;i++){ if(s.indexOf(arguments[i]) >= 0) return true; } return false; }
+    if(has('email','status update','client update','draft')) return ansEmail();
+    if(has('repeat','theme','recurr')) return ansThemes();
+    if(has('aged') && has('p2','high')) return ansAgedP2();
+    if(has('mttr','resolution','time to resolve','resolve time')) return ansMttr();
+    if(has('score','why is','attention','driver')) return ansScore();
+    if(has('risk','biggest','top 3','top three','worst','highest priorit')) return ansRisks(3);
+    if(has('p1','critical')) return ansP1();
+    if(has('backlog','how many open','total open','open cases','how many case','how many are open')) return ansBacklog();
+    if(has('summar','health','overview','bullet','snapshot','position','how are we')) return ansSummary();
+    return null;
+  }
+  function renderAnswer(q){
+    var ans = byId('aiAnswer');
+    if(!ans) return false;
+    var html = answerLocally(q);
+    if(html){
+      ans.innerHTML = '<div class="ai-answer-q">' + esc(q) + '</div>' + html
+        + '<div class="ai-answer-src">Answered from today\\u2019s dashboard data only (as at ' + esc(c.asOf) + ').</div>';
+      ans.style.display = 'block';
+      hideStatus();
+      return true;
+    }
+    return false;
+  }
+  window.aiAnswer = function(){
+    var q = currentQuestion();
+    if(!q){ toast('Type a question or pick a standard question first'); return; }
+    if(!renderAnswer(q)){
+      var ans = byId('aiAnswer');
+      if(ans){ ans.style.display = 'none'; }
+      showStatus('I can answer the standard questions directly from the data. For open-ended analysis, use <strong>Ask Copilot</strong> to send this question together with the dashboard data.');
+    }
+  };
   window.aiToggle = function(){
     var p = byId('aiPanel');
     if(p) p.classList.toggle('open');
@@ -755,7 +882,8 @@ AI_ASSISTANT_SCRIPT = """
       b.className = 'ai-preset'; b.type = 'button'; b.textContent = p;
       b.addEventListener('click', function(){
         var el = byId('aiQuestion');
-        if(el){ el.value = p; el.focus(); }
+        if(el){ el.value = p; }
+        renderAnswer(p);
       });
       box.appendChild(b);
     });
@@ -1032,6 +1160,14 @@ def build_html(m, xlsx_url, pdf_url, history=None):
   .ai-btn-primary:hover {{ background:#0e1f39; }}
   .ai-btn-ghost {{ background:#f1f5f9; color:var(--text); border:1px solid var(--border); }}
   .ai-note {{ font-size:.68rem; color:var(--muted); margin-top:10px; line-height:1.4; }}
+  .ai-answer {{ margin:12px 0 4px; padding:13px 14px; border-radius:10px; background:#f8fafc; border:1px solid var(--border); border-left:4px solid var(--navy); font-size:.8rem; color:var(--text); line-height:1.5; }}
+  .ai-answer .ai-answer-q {{ font-weight:700; color:var(--navy); margin-bottom:8px; }}
+  .ai-answer ul, .ai-answer ol {{ margin:6px 0 6px 18px; padding:0; }}
+  .ai-answer li {{ margin-bottom:5px; }}
+  .ai-answer p {{ margin:0 0 7px; }}
+  .ai-answer .ai-sub {{ color:var(--muted); font-size:.74rem; }}
+  .ai-answer .ai-answer-src {{ margin-top:9px; padding-top:8px; border-top:1px dashed var(--border); font-size:.66rem; color:var(--muted); }}
+  .ai-answer .ai-draft {{ width:100%; min-height:150px; resize:vertical; font-family:Consolas,'Courier New',monospace; font-size:.72rem; padding:9px 11px; border:1px solid var(--border); border-radius:8px; margin-top:4px; }}
   .ai-status {{ display:none; margin-top:11px; padding:10px 12px; border-radius:8px; background:#ecfdf5; border:1px solid #a7f3d0; border-left:4px solid var(--green); color:#065f46; font-size:.78rem; line-height:1.45; }}
   .ai-status strong {{ color:#064e3b; }}
   .ai-fallback textarea {{ width:100%; min-height:96px; resize:vertical; font-family:Consolas,'Courier New',monospace; font-size:.68rem; padding:9px 11px; border:1px solid var(--border); border-radius:8px; margin-bottom:8px; }}
@@ -1214,20 +1350,22 @@ def build_html(m, xlsx_url, pdf_url, history=None):
   </div>
   <div class="ai-body">
     <div class="ai-intro">
-      Ask about today's data (as at {asof_str}). Your question is packaged with the dashboard's
-      figures into a prompt and opened in Microsoft&nbsp;Copilot &ndash; no data leaves your
-      approved M365 environment, and no credentials are stored.
+      Ask about today's data (as at {asof_str}). Answers are generated <strong>directly from this
+      dashboard's figures</strong> &ndash; nothing is sent anywhere and no credentials are used. For
+      open-ended analysis you can also hand the question and data to Microsoft&nbsp;Copilot.
     </div>
-    <div class="ai-presets-title">Standard prompts</div>
+    <div class="ai-presets-title">Standard questions &ndash; click for an instant answer</div>
     <div id="aiPresets"></div>
+    <div class="ai-answer" id="aiAnswer" style="display:none"></div>
     <div class="ai-ask">
       <div class="ai-ask-title">Or ask your own</div>
-      <textarea id="aiQuestion" placeholder="e.g. Which case is the biggest risk and why?"></textarea>
+      <textarea id="aiQuestion" placeholder="e.g. How many P1 cases are open? Which case is the biggest risk?"></textarea>
       <div class="ai-actions">
-        <button class="ai-btn ai-btn-primary" onclick="aiAsk()">Ask Copilot</button>
+        <button class="ai-btn ai-btn-primary" onclick="aiAnswer()">Answer</button>
+        <button class="ai-btn ai-btn-ghost" onclick="aiAsk()">Ask Copilot</button>
         <button class="ai-btn ai-btn-ghost" onclick="aiCopy()">Copy prompt</button>
       </div>
-      <div class="ai-note">Copilot opens in a new tab &ndash; paste the prompt with Ctrl+V if it isn't already filled in.</div>
+      <div class="ai-note">&ldquo;Answer&rdquo; replies instantly from today's data. &ldquo;Ask Copilot&rdquo; opens Copilot with the question + data on your clipboard &ndash; paste with Ctrl+V.</div>
       <div class="ai-status" id="aiStatus"></div>
       <div class="ai-fallback" id="aiFallback" style="display:none">
         <div class="ai-ask-title" style="margin-top:12px">Manual copy (auto-copy was blocked)</div>
