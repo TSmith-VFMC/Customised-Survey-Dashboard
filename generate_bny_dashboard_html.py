@@ -45,6 +45,11 @@ SHAREPOINT_FOLDER_URL = (
 # across runs and users.
 HISTORY_FILE = "dashboard_history.json"
 
+# Where the "Ask AI" button sends the user. Microsoft 365 (enterprise) Copilot,
+# so BNY data stays inside the approved tenant. Change if your org uses a
+# different Copilot entry point.
+COPILOT_URL = "https://m365.cloud.microsoft/chat"
+
 
 def esc(text):
     return (
@@ -573,11 +578,129 @@ OPEN_CASES_SCRIPT = """
 """
 
 
+def _ai_context(m, xlsx_url, pdf_url):
+    """Compact JSON knowledge payload the in-page assistant hands to Copilot:
+    the headline figures, watchlist, themes, MTTR trend, the full open-case
+    list, and links to the Excel source + PDF report."""
+    def case_row(r):
+        return {
+            "case": str(r["Number"]),
+            "priority": str(r["Priority"]),
+            "daysOpen": int(round(float(r["Days Open"]))),
+            "subject": str(r["Subject"]),
+            "state": "" if pd.isna(r.get("State", "")) else str(r.get("State", "")),
+            "assignedTo": "" if pd.isna(r.get("Assigned To", "")) else str(r.get("Assigned To", "")),
+        }
+
+    open_df = m["open_df"]
+    top5 = m["top5"]
+    return {
+        "asOf": pd.Timestamp(m["asof"]).strftime("%Y-%m-%d"),
+        "managementAttentionScore": int(m["score"]),
+        "band": m["band"],
+        "backlogOpenCases": int(m["backlog"]),
+        "p1Open": int(m["p1_open"]),
+        "agedP2": int(m["aged_p2"]),
+        "repeatIncidents": int(m["repeat_incidents"]),
+        "rcaPendingExcluded": int(m["rca_pending"]),
+        "openByPriority": m["open_by_priority"],
+        "scoreDrivers": m["drivers"],
+        "mttrTrend": {
+            "periods": [w.replace("\n", " ") for w in m["week_labels"]],
+            "p1Days": m["mttr_p1"],
+            "p2Days": m["mttr_p2"],
+        },
+        "executiveWatchlistTop5": [case_row(top5.iloc[i]) for i in range(len(top5))],
+        "repeatThemes": [
+            {"theme": t["theme"], "historicalOccurrences": t["occurrences"], "openNow": t["open_count"]}
+            for t in m["themes"]
+        ],
+        "openCases": [case_row(open_df.iloc[i]) for i in range(len(open_df))],
+        "links": {"excelSourceData": xlsx_url, "pdfReport": pdf_url},
+    }
+
+
+# Floating "Ask AI" assistant (screen only). Packages the dashboard data +
+# the user's question into a prompt, copies it, and opens M365 Copilot - no
+# data leaves the approved tenant and no API key is embedded in the file.
+# __CTX__ and __COPILOT_URL__ are substituted in build_html.
+AI_ASSISTANT_SCRIPT = """
+<script>
+(function(){
+  window.BNY_CONTEXT = __CTX__;
+  var COPILOT_URL = "__COPILOT_URL__";
+  var c = window.BNY_CONTEXT;
+  var PRESETS = [
+    "Summarise today's service health in 3 short bullets for an executive.",
+    "Explain why the Management Attention Score is " + c.managementAttentionScore + " today, using the score drivers.",
+    "Which open cases are the biggest risks right now, and why? List the top 3.",
+    "Draft a brief, professional status update email to the client about today's position.",
+    "What are the repeat incident themes and what root-cause actions do they suggest?"
+  ];
+  function preamble(){
+    return "You are a service-delivery analyst assistant for the BNY Managed Data Services daily dashboard. "
+      + "Answer using ONLY the dashboard data below (as at " + c.asOf + "). If the answer is not in the data, say so. "
+      + "Be concise and executive-ready. For row-level detail you may refer the reader to the linked Excel export.\\n\\n"
+      + "DASHBOARD DATA (JSON):\\n" + JSON.stringify(c, null, 2) + "\\n\\n";
+  }
+  function buildPrompt(q){ return preamble() + "QUESTION:\\n" + q; }
+  function toast(msg){
+    var t = document.getElementById('aiToast');
+    if(!t) return;
+    if(msg) t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(function(){ t.classList.remove('show'); }, 2800);
+  }
+  function copyText(txt){
+    if(navigator.clipboard && navigator.clipboard.writeText){ return navigator.clipboard.writeText(txt); }
+    var ta = document.createElement('textarea'); ta.value = txt;
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); } catch(e){}
+    document.body.removeChild(ta);
+    return Promise.resolve();
+  }
+  function currentQuestion(){
+    var el = document.getElementById('aiQuestion');
+    return (el && el.value || '').trim();
+  }
+  window.aiToggle = function(){
+    var p = document.getElementById('aiPanel');
+    if(p) p.classList.toggle('open');
+  };
+  window.aiCopy = function(){
+    var q = currentQuestion();
+    if(!q){ toast('Type a question or pick a standard prompt first'); return; }
+    copyText(buildPrompt(q)).then(function(){ toast('Prompt copied \\u2013 paste into Copilot (Ctrl+V)'); });
+  };
+  window.aiAsk = function(){
+    var q = currentQuestion();
+    if(!q){ toast('Type a question or pick a standard prompt first'); return; }
+    copyText(buildPrompt(q)).then(function(){
+      toast('Prompt copied \\u2013 opening Copilot, paste with Ctrl+V');
+      window.open(COPILOT_URL, '_blank', 'noopener');
+    });
+  };
+  var box = document.getElementById('aiPresets');
+  if(box){
+    PRESETS.forEach(function(p){
+      var b = document.createElement('button');
+      b.className = 'ai-preset'; b.type = 'button'; b.textContent = p;
+      b.addEventListener('click', function(){
+        var el = document.getElementById('aiQuestion');
+        if(el){ el.value = p; el.focus(); }
+      });
+      box.appendChild(b);
+    });
+  }
+})();
+</script>
+"""
+
+
 def appendix_b_html(m, xlsx_url, pdf_url):
     def field(r, col):
         val = r.get(col, "")
         return "" if pd.isna(val) else str(val)
-
     open_df = m["open_df"]
     rows = []
     for i in range(len(open_df)):
@@ -662,6 +785,13 @@ def _freshness(asof):
 def build_html(m, xlsx_url, pdf_url, history=None):
     asof_str = m["asof"].strftime("%d %b %Y")
     _age_days, _is_stale, fresh_badge, stale_banner = _freshness(m["asof"])
+    ctx_json = (
+        json.dumps(_ai_context(m, xlsx_url, pdf_url), ensure_ascii=False)
+        .replace("<", "\\u003c")
+        .replace(">", "\\u003e")
+        .replace("&", "\\u0026")
+    )
+    ai_script = AI_ASSISTANT_SCRIPT.replace("__CTX__", ctx_json).replace("__COPILOT_URL__", COPILOT_URL)
     if history is None:
         history = load_history()
     trend = trend_html(m, history)
@@ -811,6 +941,29 @@ def build_html(m, xlsx_url, pdf_url, history=None):
     .pages-wrap {{ width:100%; }}
     .page {{ max-width:100%; }}
   }}
+  /* "Ask AI" assistant (screen only) */
+  .ai-fab {{ position:fixed; right:22px; bottom:22px; z-index:50; background:var(--navy); color:#fff; border:none; border-radius:9999px; padding:12px 18px; font:inherit; font-size:.85rem; font-weight:700; box-shadow:0 6px 18px rgba(0,0,0,.25); cursor:pointer; display:flex; align-items:center; gap:8px; }}
+  .ai-fab:hover {{ background:#0e1f39; }}
+  .ai-panel {{ position:fixed; right:22px; bottom:76px; z-index:50; width:360px; max-width:calc(100vw - 44px); max-height:calc(100vh - 110px); background:var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow:0 12px 36px rgba(0,0,0,.28); display:none; flex-direction:column; overflow:hidden; }}
+  .ai-panel.open {{ display:flex; }}
+  .ai-head {{ background:var(--navy); color:#fff; padding:13px 16px; display:flex; align-items:center; gap:10px; }}
+  .ai-head h3 {{ font-size:.95rem; font-weight:700; flex:1; }}
+  .ai-head .ai-close {{ background:none; border:none; color:#c7d2e0; font-size:1.3rem; cursor:pointer; line-height:1; }}
+  .ai-body {{ padding:14px 16px; overflow-y:auto; }}
+  .ai-intro {{ font-size:.76rem; color:var(--muted); line-height:1.45; margin-bottom:13px; }}
+  .ai-presets-title, .ai-ask-title {{ font-size:.68rem; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); margin:0 0 7px; }}
+  .ai-preset {{ display:block; width:100%; text-align:left; background:#f8fafc; border:1px solid var(--border); border-radius:8px; padding:8px 11px; font:inherit; font-size:.78rem; color:var(--text); cursor:pointer; margin-bottom:7px; }}
+  .ai-preset:hover {{ background:#eef2f7; border-color:#cbd5e1; }}
+  .ai-ask {{ margin-top:14px; }}
+  .ai-ask textarea {{ width:100%; min-height:62px; resize:vertical; font:inherit; font-size:.8rem; padding:9px 11px; border:1px solid var(--border); border-radius:8px; }}
+  .ai-actions {{ display:flex; gap:8px; margin-top:9px; }}
+  .ai-btn {{ flex:1; border:none; border-radius:8px; padding:9px 12px; font:inherit; font-size:.78rem; font-weight:700; cursor:pointer; }}
+  .ai-btn-primary {{ background:var(--navy); color:#fff; }}
+  .ai-btn-primary:hover {{ background:#0e1f39; }}
+  .ai-btn-ghost {{ background:#f1f5f9; color:var(--text); border:1px solid var(--border); }}
+  .ai-note {{ font-size:.68rem; color:var(--muted); margin-top:10px; line-height:1.4; }}
+  .ai-toast {{ position:fixed; right:22px; bottom:76px; z-index:60; background:var(--green); color:#fff; padding:10px 14px; border-radius:8px; font-size:.78rem; font-weight:600; box-shadow:0 6px 18px rgba(0,0,0,.25); opacity:0; transform:translateY(8px); transition:opacity .2s, transform .2s; pointer-events:none; }}
+  .ai-toast.show {{ opacity:1; transform:translateY(0); }}
   @media print {{
     body {{ background:#fff; }}
     .app-shell {{ display:block; padding:0; max-width:none; }}
@@ -820,9 +973,9 @@ def build_html(m, xlsx_url, pdf_url, history=None):
     .page:last-child {{ page-break-after:auto; }}
     .ob-toolbar {{ display:none !important; }}
     table.open-cases th.sortable {{ cursor:default; }}
+    .ai-fab, .ai-panel, .ai-toast {{ display:none !important; }}
     @page {{ size:A4 landscape; margin:8mm; }}
-  }}
-</style>
+  }}</style>
 </head>
 <body>
 <div class="app-shell">
@@ -974,6 +1127,38 @@ def build_html(m, xlsx_url, pdf_url, history=None):
 
   </div><!-- /pages-wrap -->
 </div><!-- /app-shell -->
+
+<!-- ASK AI ASSISTANT (screen only) -->
+<button class="ai-fab" id="aiFab" onclick="aiToggle()" aria-label="Open dashboard assistant">
+  <span aria-hidden="true">&#129302;</span> Ask AI
+</button>
+<div class="ai-panel" id="aiPanel" role="dialog" aria-label="Dashboard assistant">
+  <div class="ai-head">
+    <span aria-hidden="true">&#129302;</span>
+    <h3>Dashboard Assistant</h3>
+    <button class="ai-close" onclick="aiToggle()" aria-label="Close assistant">&times;</button>
+  </div>
+  <div class="ai-body">
+    <div class="ai-intro">
+      Ask about today's data (as at {asof_str}). Your question is packaged with the dashboard's
+      figures into a prompt and opened in Microsoft&nbsp;Copilot &ndash; no data leaves your
+      approved M365 environment, and no credentials are stored.
+    </div>
+    <div class="ai-presets-title">Standard prompts</div>
+    <div id="aiPresets"></div>
+    <div class="ai-ask">
+      <div class="ai-ask-title">Or ask your own</div>
+      <textarea id="aiQuestion" placeholder="e.g. Which case is the biggest risk and why?"></textarea>
+      <div class="ai-actions">
+        <button class="ai-btn ai-btn-primary" onclick="aiAsk()">Ask Copilot</button>
+        <button class="ai-btn ai-btn-ghost" onclick="aiCopy()">Copy prompt</button>
+      </div>
+      <div class="ai-note">Copilot opens in a new tab &ndash; paste the prompt with Ctrl+V if it isn't already filled in.</div>
+    </div>
+  </div>
+</div>
+<div class="ai-toast" id="aiToast">Prompt copied</div>
+{ai_script}
 </body>
 </html>
 """
