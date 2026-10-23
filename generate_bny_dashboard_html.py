@@ -644,54 +644,101 @@ AI_ASSISTANT_SCRIPT = """
       + "DASHBOARD DATA (JSON):\\n" + JSON.stringify(c, null, 2) + "\\n\\n";
   }
   function buildPrompt(q){ return preamble() + "QUESTION:\\n" + q; }
+  function byId(id){ return document.getElementById(id); }
   function toast(msg){
-    var t = document.getElementById('aiToast');
+    var t = byId('aiToast');
     if(!t) return;
     if(msg) t.textContent = msg;
     t.classList.add('show');
-    setTimeout(function(){ t.classList.remove('show'); }, 2800);
+    setTimeout(function(){ t.classList.remove('show'); }, 3200);
   }
+  // Legacy copy path - works where the async Clipboard API is blocked by a
+  // document permissions policy (common in locked-down / embedded browsers).
+  function fallbackCopy(txt){
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = txt;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.left = '0';
+      ta.style.width = '1px'; ta.style.height = '1px'; ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.focus(); ta.select();
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch(e){ ok = false; }
+      document.body.removeChild(ta);
+      return ok;
+    } catch(e){ return false; }
+  }
+  // Resolves true if the text reached the clipboard, false otherwise. Never
+  // rejects, so a blocked Clipboard API can't surface as an unhandled rejection.
   function copyText(txt){
-    if(navigator.clipboard && navigator.clipboard.writeText){ return navigator.clipboard.writeText(txt); }
-    var ta = document.createElement('textarea'); ta.value = txt;
-    document.body.appendChild(ta); ta.select();
-    try { document.execCommand('copy'); } catch(e){}
-    document.body.removeChild(ta);
-    return Promise.resolve();
+    return new Promise(function(resolve){
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(txt).then(
+          function(){ resolve(true); },
+          function(){ resolve(fallbackCopy(txt)); }
+        );
+      } else {
+        resolve(fallbackCopy(txt));
+      }
+    });
+  }
+  function showManual(promptText){
+    var out = byId('aiPromptOut'), box = byId('aiFallback');
+    if(out){ out.value = promptText; }
+    if(box){ box.style.display = 'block'; }
+    if(out){ out.focus(); out.select(); }
+  }
+  function hideManual(){
+    var box = byId('aiFallback');
+    if(box){ box.style.display = 'none'; }
   }
   function currentQuestion(){
-    var el = document.getElementById('aiQuestion');
+    var el = byId('aiQuestion');
     return (el && el.value || '').trim();
   }
   window.aiToggle = function(){
-    var p = document.getElementById('aiPanel');
+    var p = byId('aiPanel');
     if(p) p.classList.toggle('open');
   };
   window.aiCopy = function(){
     var q = currentQuestion();
     if(!q){ toast('Type a question or pick a standard prompt first'); return; }
-    copyText(buildPrompt(q)).then(function(){ toast('Prompt copied \\u2013 paste into Copilot (Ctrl+V)'); });
+    var promptText = buildPrompt(q);
+    copyText(promptText).then(function(ok){
+      if(ok){ hideManual(); toast('Prompt copied \\u2013 paste into Copilot (Ctrl+V)'); }
+      else { showManual(promptText); toast('Couldn\\u2019t auto-copy \\u2013 select the text below and press Ctrl+C'); }
+    });
   };
   window.aiAsk = function(){
     var q = currentQuestion();
     if(!q){ toast('Type a question or pick a standard prompt first'); return; }
-    copyText(buildPrompt(q)).then(function(){
-      toast('Prompt copied \\u2013 opening Copilot, paste with Ctrl+V');
-      window.open(COPILOT_URL, '_blank', 'noopener');
+    var promptText = buildPrompt(q);
+    copyText(promptText).then(function(ok){
+      if(ok){
+        hideManual();
+        toast('Prompt copied \\u2013 opening Copilot, paste with Ctrl+V');
+        window.open(COPILOT_URL, '_blank', 'noopener');
+      } else {
+        showManual(promptText);
+        toast('Couldn\\u2019t auto-copy \\u2013 copy the text below, then click Open Copilot');
+      }
     });
   };
-  var box = document.getElementById('aiPresets');
+  var box = byId('aiPresets');
   if(box){
     PRESETS.forEach(function(p){
       var b = document.createElement('button');
       b.className = 'ai-preset'; b.type = 'button'; b.textContent = p;
       b.addEventListener('click', function(){
-        var el = document.getElementById('aiQuestion');
+        var el = byId('aiQuestion');
         if(el){ el.value = p; el.focus(); }
       });
       box.appendChild(b);
     });
   }
+  var link = byId('aiOpenLink');
+  if(link){ link.setAttribute('href', COPILOT_URL); }
 })();
 </script>
 """
@@ -962,6 +1009,8 @@ def build_html(m, xlsx_url, pdf_url, history=None):
   .ai-btn-primary:hover {{ background:#0e1f39; }}
   .ai-btn-ghost {{ background:#f1f5f9; color:var(--text); border:1px solid var(--border); }}
   .ai-note {{ font-size:.68rem; color:var(--muted); margin-top:10px; line-height:1.4; }}
+  .ai-fallback textarea {{ width:100%; min-height:96px; resize:vertical; font-family:Consolas,'Courier New',monospace; font-size:.68rem; padding:9px 11px; border:1px solid var(--border); border-radius:8px; margin-bottom:8px; }}
+  .ai-open-link {{ display:block; text-align:center; text-decoration:none; }}
   .ai-toast {{ position:fixed; right:22px; top:76px; z-index:60; background:var(--green); color:#fff; padding:10px 14px; border-radius:8px; font-size:.78rem; font-weight:600; box-shadow:0 6px 18px rgba(0,0,0,.25); opacity:0; transform:translateY(-8px); transition:opacity .2s, transform .2s; pointer-events:none; }}
   .ai-toast.show {{ opacity:1; transform:translateY(0); }}
   @media print {{
@@ -1154,6 +1203,11 @@ def build_html(m, xlsx_url, pdf_url, history=None):
         <button class="ai-btn ai-btn-ghost" onclick="aiCopy()">Copy prompt</button>
       </div>
       <div class="ai-note">Copilot opens in a new tab &ndash; paste the prompt with Ctrl+V if it isn't already filled in.</div>
+      <div class="ai-fallback" id="aiFallback" style="display:none">
+        <div class="ai-ask-title" style="margin-top:12px">Manual copy (auto-copy was blocked)</div>
+        <textarea id="aiPromptOut" readonly aria-label="Generated prompt to copy"></textarea>
+        <a class="ai-btn ai-btn-primary ai-open-link" id="aiOpenLink" href="#" target="_blank" rel="noopener">Open Copilot</a>
+      </div>
     </div>
   </div>
 </div>
