@@ -1181,6 +1181,29 @@ def build_html(m, xlsx_url, pdf_url, history=None):
     .pages-wrap .page {{ margin:0; }}
     .page {{ box-shadow:none; margin:0; max-width:none; page-break-after:always; }}
     .page:last-child {{ page-break-after:auto; }}
+    /* Keep the executive summary on one sheet even when table text wraps. */
+    .page:first-child .header {{ padding:10px 20px; }}
+    .page:first-child .header h1 {{ font-size:1.2rem; }}
+    .page:first-child .body {{ padding:10px 20px 12px; }}
+    .page:first-child .grid2 {{ gap:16px; margin-bottom:7px; }}
+    .page:first-child .section-title {{ font-size:.84rem; margin-bottom:4px; }}
+    .page:first-child .kpi-row {{ gap:6px; }}
+    .page:first-child .kpi {{ min-height:42px; padding:5px 9px; }}
+    .page:first-child .kpi-value {{ font-size:1.05rem; }}
+    .page:first-child table.matrix td,
+    .page:first-child table.matrix th {{ padding:4px 5px; }}
+    .page:first-child .watchlist-block {{ margin-bottom:7px; }}
+    .page:first-child table.watchlist {{ font-size:.68rem; }}
+    .page:first-child table.watchlist th,
+    .page:first-child table.watchlist td {{ padding:3px 5px; }}
+    .page:first-child .callout {{ margin:4px 0 6px; font-size:.82rem; }}
+    .page:first-child table.data {{ font-size:.7rem; }}
+    .page:first-child table.data th,
+    .page:first-child table.data td {{ padding:4px 6px; }}
+    .page:first-child .driver-strip {{ margin-top:6px; padding:6px 9px; font-size:.7rem; }}
+    .page:first-child .callout,
+    .page:first-child table.data,
+    .page:first-child .driver-strip {{ break-inside:avoid; page-break-inside:avoid; }}
     .ob-toolbar {{ display:none !important; }}
     table.open-cases th.sortable {{ cursor:default; }}
     .ai-fab, .ai-panel, .ai-toast {{ display:none !important; }}
