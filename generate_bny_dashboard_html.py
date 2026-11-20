@@ -1204,6 +1204,20 @@ def build_html(m, xlsx_url, pdf_url, history=None):
     .page:first-child .callout,
     .page:first-child table.data,
     .page:first-child .driver-strip {{ break-inside:avoid; page-break-inside:avoid; }}
+    .page:nth-child(2) .header {{ padding:10px 20px; }}
+    .page:nth-child(2) .header h1 {{ font-size:1.2rem; }}
+    .page:nth-child(2) .body {{ padding:10px 20px 12px; }}
+    .page:nth-child(2) .charts {{ gap:16px; margin-bottom:10px; }}
+    .page:nth-child(2) .chart-card {{ padding:8px 10px; }}
+    .page:nth-child(2) .chart-card svg {{ max-height:200px; }}
+    .page:nth-child(2) .section-title {{ font-size:.84rem; margin-bottom:4px; margin-top:0 !important; }}
+    .page:nth-child(2) .trend-block {{ padding:8px 12px; margin-bottom:8px; }}
+    .page:nth-child(2) .trend-score {{ font-size:1.6rem; }}
+    .page:nth-child(2) .score-panel {{ padding:8px 12px; margin-bottom:8px; }}
+    .page:nth-child(2) .score-h {{ margin-bottom:6px; }}
+    .page:nth-child(2) table.data {{ font-size:.7rem; }}
+    .page:nth-child(2) table.data th,
+    .page:nth-child(2) table.data td {{ padding:4px 6px; }}
     .ob-toolbar {{ display:none !important; }}
     table.open-cases th.sortable {{ cursor:default; }}
     .ai-fab, .ai-panel, .ai-toast {{ display:none !important; }}
