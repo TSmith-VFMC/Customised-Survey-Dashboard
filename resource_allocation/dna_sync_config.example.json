@@ -1,0 +1,6 @@
+{
+  "excluded_people": ["Firstname Lastname"],
+  "name_aliases": {
+    "Name As In OLT Workbook": "Name As In D&A Allocation Summary"
+  }
+}

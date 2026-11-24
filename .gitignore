@@ -19,3 +19,6 @@ _inspect_*.py
 # Automated export - persistent browser session (never contains credentials,
 # but is machine/session-specific and should not be shared)
 .auth/
+
+# D&AA resource sync - staff names, kept local (repo is public)
+resource_allocation/dna_sync_config.json
