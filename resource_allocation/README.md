@@ -18,6 +18,8 @@ After changing the script or the `.bat`, republish with:
 python resource_allocation\publish.py
 ```
 
+If `publish.py` fails with "Access is denied", the OneDrive client has synced the Team-DataAnalytics library as read-only on that PC, even though SharePoint allows edits. Either upload the files through SharePoint in the browser (the `.bat` to `Team/Team Information`, and the script and config to `Team/Team Information/_app`), or stop syncing that library in OneDrive settings and sync it again.
+
 ## Config (staff names)
 
 Staff names are kept out of this public repo. Copy [`dna_sync_config.example.json`](dna_sync_config.example.json) to `dna_sync_config.json` (git-ignored) in this folder and fill in `excluded_people` and `name_aliases`. `publish.py` copies it to `_app\` alongside the script. The script stops with an error if the config file is missing.
