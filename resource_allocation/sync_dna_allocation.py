@@ -46,8 +46,8 @@ TARGET_NAME = "Operations Team_ Resource Management.xlsx"
 def _sync_root() -> Path:
     """Folder holding the synced Teams/SharePoint libraries (any user).
 
-    When run from the published `_app` folder the script sits in
-    <root>\\<SOURCE_FOLDER>\\_app, so the root is found relative to the script.
+    When run from the published `Resource_app` folder the script sits in
+    <root>\\<SOURCE_FOLDER>\\Resource_app, so the root is found relative to the script.
     """
     here = Path(__file__).resolve().parent
     for d in (here, *here.parents):

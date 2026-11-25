@@ -10,7 +10,7 @@ into
 
 ## Double-click version
 
-`Run_DnA_Resource_Sync.bat` sits in the D&A Team Information folder next to the source workbook, with the script in an `_app` subfolder (same layout as `Run_BNY_Dashboard.bat`). It previews the changes, asks `Y/N`, then applies them. The script finds both workbooks relative to its own location, so it works for anyone who has both Teams folders synced.
+`Run_DnA_Resource_Sync.bat`, the script and its config all sit together in a `Resource_app` folder inside the D&A Team Information folder, next to the source workbook. It previews the changes, asks `Y/N`, then applies them. The script finds both workbooks relative to its own location, so it works for anyone who has both Teams folders synced.
 
 After changing the script or the `.bat`, republish with:
 
@@ -18,11 +18,11 @@ After changing the script or the `.bat`, republish with:
 python resource_allocation\publish.py
 ```
 
-If `publish.py` fails with "Access is denied", the OneDrive client has synced the Team-DataAnalytics library as read-only on that PC, even though SharePoint allows edits. Either upload the files through SharePoint in the browser (the `.bat` to `Team/Team Information`, and the script and config to `Team/Team Information/_app`), or stop syncing that library in OneDrive settings and sync it again.
+If `publish.py` fails with "Access is denied", the OneDrive client has synced the Team-DataAnalytics library as read-only on that PC, even though SharePoint allows edits. Either upload the three files through SharePoint in the browser to `Team/Team Information/Resource_app`, or stop syncing that library in OneDrive settings and sync it again.
 
 ## Config (staff names)
 
-Staff names are kept out of this public repo. Copy [`dna_sync_config.example.json`](dna_sync_config.example.json) to `dna_sync_config.json` (git-ignored) in this folder and fill in `excluded_people` and `name_aliases`. `publish.py` copies it to `_app\` alongside the script. The script stops with an error if the config file is missing.
+Staff names are kept out of this public repo. Copy [`dna_sync_config.example.json`](dna_sync_config.example.json) to `dna_sync_config.json` (git-ignored) in this folder and fill in `excluded_people` and `name_aliases`. `publish.py` copies it to `Resource_app\` alongside the script. The script stops with an error if the config file is missing.
 
 ## Usage
 

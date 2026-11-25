@@ -3,7 +3,7 @@ REM ============================================================
 REM  D&AA Resource Allocation -> OLT Resource Management sync
 REM  Double-click to copy the Data & Advanced Analytics project
 REM  allocations (Future Tech, Modern Cloud, Elevated Partnerships;
-REM  excluding people listed in _app\dna_sync_config.json) from 'D&A Resource Allocation Summaryv2.xlsx'
+REM  excluding people listed in dna_sync_config.json) from 'D&A Resource Allocation Summaryv2.xlsx'
 REM  (OLT Mgmt sheet) into 'Operations Team_ Resource Management.xlsx'
 REM  (Project Resource (new) sheet).
 REM  Shows a preview of the changes first and asks before writing.
@@ -11,11 +11,11 @@ REM ============================================================
 
 setlocal
 
-REM Script is bundled in the _app subfolder next to this .bat, so it runs for
-REM any user who has this folder synced - no repo clone or fixed path.
+REM This .bat, the script and its config all sit together in the Resource_app
+REM folder inside Team Information, so it runs for any user who has that folder
+REM synced - no repo clone or fixed path.
 set "PYTHON=C:\Program Files\Python312\python.exe"
-set "APP_DIR=%~dp0_app"
-set "SYNC_SCRIPT=%APP_DIR%\sync_dna_allocation.py"
+set "SYNC_SCRIPT=%~dp0sync_dna_allocation.py"
 
 echo.
 echo  ======================================================================
@@ -34,7 +34,7 @@ echo         (OLT Resource Management folder - Data ^& Advanced Analytics rows o
 echo.
 echo   WHAT IS COPIED
 echo   - Data ^& Advanced Analytics team members only, excluding anyone on
-echo     the exclusion list in _app\dna_sync_config.json (shown below)
+echo     the exclusion list in dna_sync_config.json (shown below)
 echo   - Monthly FTE allocations from Oct-26 onwards, matched by month
 echo   - Only the three E28 programs reported to the OLT:
 echo       E28 Fut Tech AA        -^>  Future Tech
